@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Album {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(255)
+  description  String?  @db.Text
+  photographer String   @db.VarChar(255)
+  eventDate    DateTime @map("event_date") @db.Date
+  city         String?  @db.VarChar(255)
+  state        String?  @db.VarChar(255)
+  country      String?  @db.VarChar(255)
+  keywords     String[] @default([])
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  photos Photo[]
+
+  @@index([photographer])
+  @@index([city, country])
+  @@index([eventDate])
+  @@index([keywords], type: Gin)
+  @@map("albums")
+}
+
+model Photo {
+  id               String   @id @default(uuid()) @db.Uuid
+  albumId          String   @map("album_id") @db.Uuid
+  originalFilename String   @map("original_filename") @db.VarChar(500)
+  storedFilename   String   @map("stored_filename") @db.VarChar(500)
+  storedPath       String   @map("stored_path") @db.VarChar(1000)
+  thumbnailPath    String?  @map("thumbnail_path") @db.VarChar(1000)
+  fileSize         Int      @map("file_size")
+  width            Int?
+  height           Int?
+  title            String?  @db.VarChar(500)
+  description      String?  @db.Text
+  keywords         String[] @default([])
+  copyright        String?  @db.VarChar(500)
+  artist           String?  @db.VarChar(255)
+  dateCreated      String?  @map("date_created") @db.VarChar(100)
+  city             String?  @db.VarChar(255)
+  state            String?  @db.VarChar(255)
+  country          String?  @db.VarChar(255)
+  gpsLatitude      Float?   @map("gps_latitude")
+  gpsLongitude     Float?   @map("gps_longitude")
+  cameraMake       String?  @map("camera_make") @db.VarChar(255)
+  cameraModel      String?  @map("camera_model") @db.VarChar(255)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@index([albumId])
+  @@index([keywords], type: Gin)
+  @@index([artist])
+  @@index([city, country])
+  @@map("photos")
+}

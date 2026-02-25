@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Editor de Metadatos
 
-## Getting Started
+Aplicación de escritorio para gestionar álbumes fotográficos con metadatos EXIF, almacenamiento SFTP y edición en lote. Diseñada para el departamento de relaciones públicas.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Capa           | Tecnología                                       |
+| -------------- | ------------------------------------------------ |
+| Frontend       | Next.js 15, React 19, TypeScript, Tailwind CSS 4 |
+| Desktop        | Electron                                         |
+| Base de datos  | PostgreSQL + Prisma 7                            |
+| Almacenamiento | SFTP (ssh2-sftp-client)                          |
+| Metadatos      | exiftool-vendored, Sharp                         |
+| Estado         | Zustand                                          |
+| Animaciones    | Motion (Framer Motion)                           |
+
+## Estructura
+
+```
+app/            → Next.js pages & layout
+components/     → React UI (AlbumManager, AlbumDetail, AlbumForm, AlbumPhotoEditor, etc.)
+electron/       → Main process (main.js, preload.js)
+  handlers/     → IPC handlers (albums.js)
+  services/     → SFTP storage, image compression
+lib/            → Zustand stores (albumStore, store)
+prisma/         → Schema & migrations
+types/          → TypeScript definitions (electron.d.ts)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+cp .env.example .env        # Configurar DATABASE_URL, SFTP_HOST, etc.
+npx prisma migrate dev       # Crear tablas
+npm run electron:dev         # Iniciar app
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Comandos
 
-## Learn More
+| Comando                        | Descripción                     |
+| ------------------------------ | ------------------------------- |
+| `npm run electron:dev`         | Desarrollo (Next.js + Electron) |
+| `npm run dev`                  | Solo UI web (sin Electron)      |
+| `npm run build`                | Build Next.js                   |
+| `npm run electron:build:win`   | Build Windows installer         |
+| `npm run electron:build:mac`   | Build macOS installer           |
+| `npm run electron:build:linux` | Build Linux installer           |
+| `npm run lint`                 | Linting                         |
 
-To learn more about Next.js, take a look at the following resources:
+## Funcionalidades
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Gestión de álbumes**: Crear, editar, eliminar álbumes con metadatos heredables
+- **Subida de fotos**: Compresión automática (Sharp), thumbnails, upload SFTP con barra de progreso
+- **Edición de metadatos**: Individual o en lote — título, descripción, keywords, copyright, artista, ubicación, GPS
+- **Descarga**: Foto individual directa o ZIP para selección múltiple
+- **Renombrado en lote**: Patrones con `{n}`, `{date}`, `{original}`
+- **Búsqueda de ubicación**: Integración con API de geocodificación
+- **Transiciones animadas**: Slideshow de thumbnails en tarjetas, fade entre vistas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Flujo de trabajo
 
-## Deploy on Vercel
+1. **Crear álbum** → nombre, fotógrafo, fecha, ubicación, keywords
+2. **Subir fotos** → se comprimen y suben al servidor SFTP; metadatos del álbum se heredan automáticamente
+3. **Editar** → seleccionar fotos, modificar metadatos en panel lateral
+4. **Descargar** → 1 foto = descarga directa, múltiples = ZIP
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Variables de entorno
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/editor_metadatos
+SFTP_HOST=tu-servidor.com
+SFTP_PORT=22
+SFTP_USER=usuario
+SFTP_PASSWORD=contraseña
+SFTP_BASE_PATH=/fotos
+```
+
+## Troubleshooting
+
+- **"ElectronAPI not available"** → Ejecutar con `npm run electron:dev`, no `npm run dev`
+- **Puerto 3000 ocupado** → `netstat -ano | findstr :3000` (Windows)
+- **Prisma error** → `npx prisma generate && npx prisma migrate dev`
+- **ExifTool** → Se instala automáticamente con exiftool-vendored
+
+## Seguridad
+
+- Snyk code scan se ejecuta para código nuevo en lenguajes soportados
+- Los issues encontrados se corrigen y re-escanean hasta resolverlos
+- Path traversal bloqueado en todas las rutas SFTP
+- Preload bridge expone solo métodos específicos (no ipcRenderer directo)
