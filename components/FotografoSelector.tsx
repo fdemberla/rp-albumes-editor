@@ -28,13 +28,19 @@ export default function FotografoSelector({
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const touchedRef = useRef(false);
 
   // Sync selected state when value or initialFotografo changes
+  // Once the user has interacted (select/clear), stop overriding their choice
   useEffect(() => {
+    if (!value && !initialFotografo) {
+      setSelected(null);
+      touchedRef.current = false;
+      return;
+    }
+    if (touchedRef.current) return;
     if (initialFotografo) {
       setSelected(initialFotografo);
-    } else if (!value) {
-      setSelected(null);
     }
   }, [value, initialFotografo]);
 
@@ -70,6 +76,7 @@ export default function FotografoSelector({
   }, []);
 
   const handleSelect = (fotografo: Fotografo) => {
+    touchedRef.current = true;
     setSelected(fotografo);
     onChange(fotografo.id, fotografo);
     setShowDropdown(false);
@@ -77,6 +84,7 @@ export default function FotografoSelector({
   };
 
   const handleClear = () => {
+    touchedRef.current = true;
     setSelected(null);
     onChange(null, null);
     setSearch("");
@@ -194,8 +202,7 @@ function InlineCreateForm({
   const [lastName, setLastName] = useState(parts.slice(1).join(" ") || "");
   const [email, setEmail] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
     if (!firstName.trim() || !lastName.trim()) return;
     onCreate({
       firstName: firstName.trim(),
@@ -205,7 +212,15 @@ function InlineCreateForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 space-y-2">
+    <div
+      className="p-3 space-y-2"
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleSubmit();
+        }
+      }}
+    >
       <div className="grid grid-cols-2 gap-2">
         <input
           type="text"
@@ -241,12 +256,13 @@ function InlineCreateForm({
           Cancelar
         </button>
         <button
-          type="submit"
+          type="button"
+          onClick={handleSubmit}
           className="px-2 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700"
         >
           Crear
         </button>
       </div>
-    </form>
+    </div>
   );
 }

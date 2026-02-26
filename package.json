@@ -25,8 +25,23 @@
       "electron/**/*",
       "prisma/**/*",
       "out/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,changelog.md,LICENSE,license,License}",
+      "!**/node_modules/*/{test,tests,__tests__,powered-test,docs,doc,documentation,example,examples}/**",
+      "!**/node_modules/.cache/**",
+      "!**/node_modules/@prisma/engines/**",
+      "!**/node_modules/@prisma/studio-core/**",
+      "!**/node_modules/@prisma/dev/**",
+      "!**/node_modules/@prisma/fetch-engine/**",
+      "!**/node_modules/@prisma/get-platform/**",
+      "!**/node_modules/@prisma/config/**",
+      "!**/query_compiler*cockroachdb*",
+      "!**/query_compiler*mysql*",
+      "!**/query_compiler*sqlite*",
+      "!**/query_compiler*sqlserver*",
+      "!**/*.js.map",
+      "!**/*.mjs.map",
+      "!**/*.d.ts.map"
     ],
     "extraResources": [
       {
@@ -41,8 +56,43 @@
         ]
       },
       {
-        "from": "node_modules/@prisma",
-        "to": "node_modules/@prisma",
+        "from": "node_modules/@prisma/client",
+        "to": "node_modules/@prisma/client",
+        "filter": [
+          "**/*",
+          "!**/query_compiler*cockroachdb*",
+          "!**/query_compiler*mysql*",
+          "!**/query_compiler*sqlite*",
+          "!**/query_compiler*sqlserver*",
+          "!**/*.js.map",
+          "!**/*.mjs.map",
+          "!**/*.d.ts.map"
+        ]
+      },
+      {
+        "from": "node_modules/@prisma/adapter-pg",
+        "to": "node_modules/@prisma/adapter-pg",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/@prisma/driver-adapter-utils",
+        "to": "node_modules/@prisma/driver-adapter-utils",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/@prisma/client-runtime-utils",
+        "to": "node_modules/@prisma/client-runtime-utils",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/@prisma/debug",
+        "to": "node_modules/@prisma/debug",
         "filter": [
           "**/*"
         ]
@@ -50,8 +100,6 @@
     ],
     "asarUnpack": [
       "**/node_modules/sharp/**",
-      "**/node_modules/@prisma/**",
-      "**/node_modules/.prisma/**",
       "**/node_modules/ssh2/**",
       "**/node_modules/exiftool-vendored/**",
       "**/node_modules/@photostructure/**"
@@ -81,26 +129,19 @@
   },
   "dependencies": {
     "@azure/msal-node": "^5.0.5",
-    "@azure/msal-node-extensions": "^5.0.5",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
-    "@tanstack/react-form": "^1.28.3",
     "archiver": "^7.0.1",
     "dotenv": "^17.3.1",
     "exiftool-vendored": "^31.1.0",
-    "lucide-react": "^0.575.0",
-    "motion": "^12.34.3",
-    "next": "15.5.4",
     "pg": "^8.18.0",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
     "sharp": "^0.34.5",
-    "ssh2-sftp-client": "^12.0.1",
-    "zustand": "^5.0.8"
+    "ssh2-sftp-client": "^12.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@tanstack/react-form": "^1.28.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -111,9 +152,15 @@
     "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "lucide-react": "^0.575.0",
+    "motion": "^12.34.3",
+    "next": "15.5.4",
     "prisma": "^7.4.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "wait-on": "^9.0.1"
+    "wait-on": "^9.0.1",
+    "zustand": "^5.0.8"
   }
 }
