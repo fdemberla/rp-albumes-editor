@@ -9,7 +9,8 @@ Electron desktop app for managing photo albums with EXIF metadata, SFTP storage,
 - **Renderer (Next.js):** `app/`, `components/`, `lib/`, `types/` — all components are `"use client"`
 - **Main process (Electron):** `electron/main.js`, `electron/preload.js`, `electron/handlers/`, `electron/services/`
 - **Bridge:** `contextBridge.exposeInMainWorld("electronAPI", ...)` — typed in `types/electron.d.ts`
-- **State:** Zustand stores in `lib/` — `useAlbumStore` (albums/photos), `useImageStore` (standalone editing)
+- **State:** Zustand stores in `lib/` — `useAuthStore` (auth/user), `useAlbumStore` (albums/photos), `useImageStore` (standalone editing)
+- **Auth:** Microsoft Entra ID SSO via `@azure/msal-node` in `electron/services/auth.js` — persistent token cache in `userData/msal-token-cache.json`
 
 ## Key conventions
 
@@ -95,6 +96,10 @@ export default function MyComponent({ ... }: Props) { /* ... */ }
 - GPS coordinates are `Float?`
 - Keywords are `String[]` with GIN indexes
 - After schema changes: `npx prisma migrate dev --name description`
+- **Models:** `User` (auth + roles), `Fotografo` (photographer profiles, optionally linked to `User`), `Album` (FK to `Fotografo`), `Photo`
+- **Roles:** `ADMIN` (can manage users/fotografos), `USER` (all other operations)
+- `Album.photographerId` FK → `Fotografo.id`; legacy `Album.photographer` text column is nullable (to be removed)
+- `Fotografo.email` links to `User.email` for auto-attribution
 
 ## Electron security
 
@@ -118,11 +123,21 @@ export default function MyComponent({ ... }: Props) { /* ... */ }
 3. Add TypeScript types in `types/electron.d.ts` (interface + `ElectronAPI` method)
 4. Consume via Zustand store action or directly with `window.electronAPI.*`
 
+## Authentication
+
+- **Login flow:** `auth:login` → MSAL `acquireTokenInteractive` opens system browser → MS Entra ID login → validates user exists in `users` table → returns user + linked fotografo
+- **Session persistence:** MSAL token cache persisted to disk → `auth:getSession` attempts `acquireTokenSilent` on app startup
+- **Authorization:** User must exist in the `users` table to access the app. First user is added manually via SQL/Prisma Studio.
+- **Role enforcement:** `user:*` IPC handlers check caller is ADMIN via `requireAdmin()` helper. Frontend hides admin UI for non-admin users.
+- **Auto-attribution:** If logged-in user's email matches a `Fotografo.email`, new albums auto-default to that fotografo.
+
 ## Environment variables
 
 Loaded via `dotenv` in `electron/main.js`. Required:
 
 - `DATABASE_URL` — PostgreSQL connection string
+- `AZURE_CLIENT_ID` — Microsoft Entra ID app registration client ID
+- `AZURE_TENANT_ID` — Azure AD tenant ID
 - `SFTP_HOST`, `SFTP_PORT`, `SFTP_USER`, `SFTP_PASSWORD`, `SFTP_BASE_PATH`
 
 ## Build & run

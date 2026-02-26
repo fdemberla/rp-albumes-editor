@@ -6,6 +6,7 @@ import { useAlbumStore } from "@/lib/albumStore";
 import type { AlbumFilter, AlbumCreateInput, Album } from "@/types/electron";
 import AlbumForm from "./AlbumForm";
 import AlbumDetail from "./AlbumDetail";
+import AlbumSearchPanel from "./AlbumSearchPanel";
 
 export default function AlbumManager() {
   const {
@@ -24,8 +25,7 @@ export default function AlbumManager() {
   } = useAlbumStore();
 
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [filterPhotographer, setFilterPhotographer] = useState("");
+  const [filters, setFilters] = useState<AlbumFilter>({});
   // When true, the album detail will open with upload panel visible
   const [openWithUpload, setOpenWithUpload] = useState(false);
 
@@ -35,12 +35,11 @@ export default function AlbumManager() {
   }, [fetchAlbums]);
 
   const handleSearch = useCallback(() => {
-    const filters: AlbumFilter = {};
-    if (searchText.trim()) filters.name = searchText.trim();
-    if (filterPhotographer.trim())
-      filters.photographer = filterPhotographer.trim();
-    fetchAlbums(filters);
-  }, [searchText, filterPhotographer, fetchAlbums]);
+    // Strip pagination when filters change so it resets to page 1
+    const searchFilters = { ...filters };
+    delete searchFilters.page;
+    fetchAlbums(searchFilters);
+  }, [filters, fetchAlbums]);
 
   // Search when filters change (debounced)
   useEffect(() => {
@@ -76,11 +75,7 @@ export default function AlbumManager() {
   };
 
   const handlePageChange = (newPage: number) => {
-    const filters: AlbumFilter = { page: newPage };
-    if (searchText.trim()) filters.name = searchText.trim();
-    if (filterPhotographer.trim())
-      filters.photographer = filterPhotographer.trim();
-    fetchAlbums(filters);
+    fetchAlbums({ ...filters, page: newPage });
   };
 
   // If viewing an album detail, render that instead
@@ -162,22 +157,11 @@ export default function AlbumManager() {
       )}
 
       {/* Search & Filters */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          placeholder="Buscar por nombre..."
-          className="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        <input
-          type="text"
-          value={filterPhotographer}
-          onChange={(e) => setFilterPhotographer(e.target.value)}
-          placeholder="Fotógrafo..."
-          className="w-48 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </div>
+      <AlbumSearchPanel
+        filters={filters}
+        onFiltersChange={setFilters}
+        onClear={() => setFilters({})}
+      />
 
       {/* Loading */}
       {loading && (
@@ -231,7 +215,10 @@ export default function AlbumManager() {
                   {album.name}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {album.photographer} &middot;{" "}
+                  {album.fotografo
+                    ? `${album.fotografo.firstName} ${album.fotografo.lastName}`
+                    : album.photographer || "Sin fotógrafo"}{" "}
+                  &middot;{" "}
                   {new Date(album.eventDate).toLocaleDateString("es-PA")}
                 </p>
                 {(album.city || album.country) && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Loader2, ImagePlus } from "lucide-react";
 import { useImageStore } from "@/lib/store";
 import { ImageWithMetadata } from "@/lib/store";
 
@@ -26,7 +27,7 @@ export default function ImageImport() {
         for (const result of results) {
           if (result.success && result.metadata) {
             const preview = await window.electronAPI.getImagePreview(
-              result.filePath
+              result.filePath,
             );
 
             images.push({
@@ -42,13 +43,13 @@ export default function ImageImport() {
         addImages(images);
       } catch (error) {
         setError(
-          error instanceof Error ? error.message : "Error loading images"
+          error instanceof Error ? error.message : "Error loading images",
         );
       } finally {
         setLoading(false);
       }
     },
-    [addImages, setLoading, setError]
+    [addImages, setLoading, setError],
   );
 
   const handleOpenFiles = async () => {
@@ -66,7 +67,7 @@ export default function ImageImport() {
     const result = await window.electronAPI.openFolder();
     if (!result.canceled && result.folder) {
       const folderResult = await window.electronAPI.listImagesInFolder(
-        result.folder
+        result.folder,
       );
       if (folderResult.success && folderResult.files) {
         await processFiles(folderResult.files);
@@ -99,7 +100,7 @@ export default function ImageImport() {
         await processFiles(filePaths);
       }
     },
-    [processFiles]
+    [processFiles],
   );
 
   return (
@@ -119,19 +120,7 @@ export default function ImageImport() {
           <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 rounded-lg flex items-center justify-center z-50">
             <div className="flex flex-col items-center gap-3">
               <div className="animate-spin">
-                <svg
-                  className="w-8 h-8 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"
-                  />
-                </svg>
+                <Loader2 className="w-8 h-8 text-blue-600" />
               </div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Cargando imágenes...
@@ -141,19 +130,7 @@ export default function ImageImport() {
         )}
         <div className="space-y-4">
           <div className="flex justify-center">
-            <svg
-              className="w-16 h-16 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
+            <ImagePlus className="w-16 h-16 text-gray-400" />
           </div>
 
           <div>

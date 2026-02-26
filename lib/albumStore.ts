@@ -22,6 +22,7 @@ interface AlbumStore {
   uploadProgress: UploadProgress | null;
   dbConnected: boolean | null;
   sftpConnected: boolean | null;
+  currentFilters: AlbumFilter | null;
 
   // ─── Actions ────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
   uploadProgress: null,
   dbConnected: null,
   sftpConnected: null,
+  currentFilters: null,
 
   // ─── Connection Tests ─────────────────────────────────────────────────
 
@@ -104,7 +106,7 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
   // ─── Album CRUD ───────────────────────────────────────────────────────
 
   fetchAlbums: async (filters) => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, currentFilters: filters || null });
     try {
       const result = await window.electronAPI.listAlbums(filters);
       if (result.success) {
@@ -132,7 +134,7 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
       const result = await window.electronAPI.createAlbum(input);
       if (result.success && result.album) {
         // Refresh album list
-        await get().fetchAlbums();
+        await get().fetchAlbums(get().currentFilters || undefined);
         set({ loading: false });
         return result.album;
       } else {
@@ -187,7 +189,7 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
           set({ loading: false });
         }
         // Refresh album list
-        await get().fetchAlbums();
+        await get().fetchAlbums(get().currentFilters || undefined);
         return result.album;
       } else {
         set({
@@ -216,7 +218,7 @@ export const useAlbumStore = create<AlbumStore>((set, get) => ({
           set({ currentAlbum: null });
         }
         // Refresh album list
-        await get().fetchAlbums();
+        await get().fetchAlbums(get().currentFilters || undefined);
         set({ loading: false });
         return true;
       } else {

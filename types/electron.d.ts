@@ -1,3 +1,56 @@
+// ─── Auth & User Types ────────────────────────────────────────────────────────
+
+export type Role = "ADMIN" | "USER";
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  createdAt: string;
+  updatedAt: string;
+  fotografo?: Fotografo | null;
+}
+
+export interface Fotografo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  userId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: { id: string; email: string; role: Role } | null;
+}
+
+export interface AuthSession {
+  success: boolean;
+  user?: User;
+  fotografo?: Fotografo | null;
+  error?: string;
+}
+
+export interface UserCreateInput {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role?: Role;
+}
+
+export type UserUpdateInput = Partial<UserCreateInput>;
+
+export interface FotografoCreateInput {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  userId?: string;
+}
+
+export type FotografoUpdateInput = Partial<FotografoCreateInput>;
+
+// ─── Image Metadata Types ─────────────────────────────────────────────────────
+
 export interface ImageMetadata {
   fileName: string;
   filePath: string;
@@ -47,7 +100,9 @@ export interface Album {
   id: string;
   name: string;
   description: string | null;
-  photographer: string;
+  photographer: string | null; // Legacy — will be removed after data migration
+  photographerId: string | null;
+  fotografo: Fotografo | null;
   eventDate: string; // ISO date string
   city: string | null;
   state: string | null;
@@ -88,7 +143,8 @@ export interface AlbumPhoto {
 export interface AlbumCreateInput {
   name: string;
   description?: string;
-  photographer: string;
+  photographer?: string; // Legacy text field
+  photographerId?: string; // FK to Fotografo
   eventDate: string; // ISO date string (YYYY-MM-DD)
   city?: string;
   state?: string;
@@ -100,12 +156,16 @@ export type AlbumUpdateInput = Partial<AlbumCreateInput>;
 
 export interface AlbumFilter {
   name?: string;
-  photographer?: string;
+  photographer?: string; // text search (legacy + fotografo name)
+  photographerId?: string; // exact FK filter
   city?: string;
+  state?: string;
   country?: string;
   dateFrom?: string; // ISO date string
   dateTo?: string; // ISO date string
   keywords?: string[];
+  sortBy?: "eventDate" | "name" | "createdAt";
+  sortOrder?: "asc" | "desc";
   page?: number;
   pageSize?: number;
 }
@@ -165,6 +225,52 @@ export interface ConnectionTestResult {
 // ─── Electron API ─────────────────────────────────────────────────────────
 
 export interface ElectronAPI {
+  // ─── Auth Operations ───────────────────────────────────────────────────
+  login: () => Promise<AuthSession>;
+  logout: () => Promise<{ success: boolean; error?: string }>;
+  getSession: () => Promise<AuthSession>;
+
+  // ─── User Management (admin) ──────────────────────────────────────────
+  listUsers: () => Promise<{
+    success: boolean;
+    users?: User[];
+    error?: string;
+  }>;
+  createUser: (input: UserCreateInput) => Promise<{
+    success: boolean;
+    user?: User;
+    error?: string;
+  }>;
+  updateUser: (
+    userId: string,
+    input: UserUpdateInput,
+  ) => Promise<{ success: boolean; user?: User; error?: string }>;
+  deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
+
+  // ─── Fotografo Operations ─────────────────────────────────────────────
+  listFotografos: (search?: string) => Promise<{
+    success: boolean;
+    fotografos?: Fotografo[];
+    error?: string;
+  }>;
+  createFotografo: (input: FotografoCreateInput) => Promise<{
+    success: boolean;
+    fotografo?: Fotografo;
+    error?: string;
+  }>;
+  updateFotografo: (
+    fotografoId: string,
+    input: FotografoUpdateInput,
+  ) => Promise<{ success: boolean; fotografo?: Fotografo; error?: string }>;
+  deleteFotografo: (
+    fotografoId: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  getFotografoByEmail: (email: string) => Promise<{
+    success: boolean;
+    fotografo?: Fotografo | null;
+    error?: string;
+  }>;
+
   // Dialog operations
   openFiles: () => Promise<{ canceled: boolean; files: string[] }>;
   openFolder: () => Promise<{ canceled: boolean; folder: string | null }>;

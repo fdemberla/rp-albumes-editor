@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import type { AlbumPhoto } from "@/types/electron";
 import AlbumPhotoEditor from "./AlbumPhotoEditor";
 
@@ -25,8 +26,33 @@ export default function PhotoViewer({
   const [loadingImage, setLoadingImage] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [direction, setDirection] = useState(0); // -1 = prev, 1 = next
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
   const photo = photos[currentIndex];
+
+  // Load thumbnails for the strip
+  useEffect(() => {
+    let cancelled = false;
+    const loadThumbnails = async () => {
+      const thumbs: Record<string, string> = {};
+      for (const p of photos) {
+        if (cancelled) break;
+        if (p.thumbnailPath) {
+          try {
+            const result = await window.electronAPI.getAlbumThumbnail(p.thumbnailPath);
+            if (result.success && result.data) {
+              thumbs[p.id] = result.data;
+            }
+          } catch {
+            // skip
+          }
+        }
+      }
+      if (!cancelled) setThumbnails(thumbs);
+    };
+    loadThumbnails();
+    return () => { cancelled = true; };
+  }, [photos]);
 
   // Load full-resolution image
   const loadImage = useCallback(async () => {
@@ -103,19 +129,7 @@ export default function PhotoViewer({
             className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-md transition-colors"
             title="Cerrar (Esc)"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
           <div className="text-white/90">
             <p className="text-sm font-medium truncate max-w-md">
@@ -157,19 +171,7 @@ export default function PhotoViewer({
             className="absolute left-3 z-10 p-2 rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white transition-colors"
             title="Anterior (←)"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
+            <ChevronLeft className="w-6 h-6" />
           </button>
         )}
 
@@ -206,19 +208,7 @@ export default function PhotoViewer({
             className="absolute right-3 z-10 p-2 rounded-full bg-black/40 text-white/80 hover:bg-black/60 hover:text-white transition-colors"
             title="Siguiente (→)"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
+            <ChevronRight className="w-6 h-6" />
           </button>
         )}
 
@@ -236,9 +226,17 @@ export default function PhotoViewer({
                       : "border-transparent opacity-50 hover:opacity-80"
                   }`}
                 >
-                  <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                    <span className="text-[8px] text-gray-400">{i + 1}</span>
-                  </div>
+                  {thumbnails[p.id] ? (
+                    <img
+                      src={thumbnails[p.id]}
+                      alt={p.originalFilename}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                      <span className="text-[8px] text-gray-400">{i + 1}</span>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

@@ -1,17 +1,59 @@
 // Load environment variables before anything else
-require("dotenv").config();
-
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
+
+// In packaged builds, load .env from the app's root (next to the exe) or from resources
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  protocol,
+  net,
+} = require("electron");
+
+// Resolve .env path: in production look next to the executable, in dev use project root
+const envPath = app.isPackaged
+  ? path.join(path.dirname(process.execPath), ".env")
+  : path.join(__dirname, "..", ".env");
+
+require("dotenv").config({ path: envPath });
+
 const fs = require("fs").promises;
+const url = require("url");
+
+// ─── Fix Prisma & native module resolution in packaged builds ───────────────
+if (app.isPackaged) {
+  const extraResources = path.join(process.resourcesPath, "node_modules");
+  require("module").globalPaths.push(extraResources);
+}
+
 const { exiftool } = require("exiftool-vendored");
 const {
   registerAlbumHandlers,
   cleanup: albumCleanup,
+  getPrisma,
 } = require("./handlers/albums");
+const { registerAuthHandlers } = require("./handlers/auth");
+const { registerUserHandlers } = require("./handlers/users");
+const { registerFotografoHandlers } = require("./handlers/fotografos");
 
 let mainWindow;
 const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
+
+// ─── Register custom protocol for production static files ───────────────────
+if (!isDev) {
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: "app",
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: true,
+      },
+    },
+  ]);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -29,21 +71,47 @@ function createWindow() {
     mainWindow.loadURL("http://localhost:3000");
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../out/index.html"));
+    mainWindow.loadURL("app://./index.html");
   }
 }
 
 app.whenReady().then(() => {
+  // Register app:// protocol to serve static files from out/
+  if (!isDev) {
+    protocol.handle("app", (request) => {
+      const requestUrl = new URL(request.url);
+      let filePath = requestUrl.pathname;
+      // Remove leading slash on Windows
+      if (filePath.startsWith("/")) filePath = filePath.substring(1);
+      // Decode URI components
+      filePath = decodeURIComponent(filePath);
+      // Resolve against the out/ directory
+      const outDir = path.join(__dirname, "..", "out");
+      const resolvedPath = path.join(outDir, filePath);
+      // Security: ensure path stays within out/
+      if (!resolvedPath.startsWith(outDir)) {
+        return new Response("Forbidden", { status: 403 });
+      }
+      return net.fetch(url.pathToFileURL(resolvedPath).toString());
+    });
+  }
+
   createWindow();
   registerAlbumHandlers();
+  registerAuthHandlers(getPrisma);
+  registerUserHandlers(getPrisma);
+  registerFotografoHandlers(getPrisma);
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    exiftool.end(); // Clean up exiftool process
-    albumCleanup().catch((err) => console.error("Album cleanup error:", err));
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  exiftool.end().catch(() => {});
+  albumCleanup().catch((err) => console.error("Album cleanup error:", err));
 });
 
 app.on("activate", () => {
@@ -373,64 +441,32 @@ ipcMain.handle("folder:listImages", async (event, folderPath) => {
 
 // Process bulk images: copy/move files with metadata and optional rename
 ipcMain.handle("image:processBulkImages", async (event, operations) => {
-  console.log("=== DEBUG: processBulkImages INICIADO ===");
-  console.log(
-    "Tipo de operations:",
-    typeof operations,
-    Array.isArray(operations),
-  );
-  console.log("Operations recibidas:", JSON.stringify(operations, null, 2));
-
   try {
     if (!Array.isArray(operations)) {
-      console.error("ERROR: operations no es un array");
       throw new Error("Invalid operations payload");
     }
 
-    console.log("Total de operaciones a procesar:", operations.length);
     const results = [];
 
     for (let i = 0; i < operations.length; i++) {
       const op = operations[i];
-      console.log(
-        `\n--- Procesando operación ${i + 1}/${operations.length} ---`,
-      );
-      console.log("Operación:", JSON.stringify(op, null, 2));
 
       try {
-        // Prepare new filename
         const newFileName = op.newName;
         const outputDir = op.outputFolder || path.dirname(op.filePath);
         const newFilePath = path.join(outputDir, newFileName);
 
-        console.log("  - Archivo origen:", op.filePath);
-        console.log("  - Carpeta destino:", outputDir);
-        console.log("  - Nombre nuevo:", newFileName);
-        console.log("  - Ruta completa destino:", newFilePath);
-        console.log("  - Operación:", op.operation);
-
         // Ensure output directory exists
-        try {
-          console.log("  - Creando directorio si no existe...");
-          await fs.mkdir(outputDir, { recursive: true });
-          console.log("  - Directorio OK");
-        } catch (mkdirErr) {
-          console.log("  - Advertencia mkdir:", mkdirErr.message);
-          void mkdirErr;
-        }
+        await fs.mkdir(outputDir, { recursive: true }).catch(() => {});
 
         // Copy or move file
-        console.log("  - Ejecutando operación de archivo...");
         if (op.operation === "copy") {
           await fs.copyFile(op.filePath, newFilePath);
-          console.log("  - Archivo copiado exitosamente");
         } else if (op.operation === "move") {
           await fs.rename(op.filePath, newFilePath);
-          console.log("  - Archivo movido exitosamente");
         }
 
         // Write metadata to the new file
-        console.log("  - Escribiendo metadatos...");
         const tags = {};
 
         if (op.metadata.title !== undefined) tags.Title = op.metadata.title;
@@ -459,44 +495,34 @@ ipcMain.handle("image:processBulkImages", async (event, operations) => {
           }
         }
 
-        console.log("  - Tags a escribir:", JSON.stringify(tags, null, 2));
         await exiftool.write(newFilePath, tags, ["-overwrite_original"]);
-        console.log("  - Metadatos escritos exitosamente");
 
         results.push({
           success: true,
           oldPath: op.filePath,
           newPath: newFilePath,
         });
-        console.log("  ✓ Operación completada con éxito");
       } catch (error) {
-        console.error(`  ✗ ERROR en operación ${i + 1}:`, error);
-        console.error("  Stack trace:", error.stack);
+        console.error(
+          `[BulkProcess] Error on operation ${i + 1}:`,
+          error.message,
+        );
         results.push({
           success: false,
-          oldPath: op && op.filePath ? op.filePath : "",
-          error: error && error.message ? error.message : String(error),
+          oldPath: op?.filePath || "",
+          error: error?.message || String(error),
         });
       }
     }
 
-    console.log("\n=== DEBUG: processBulkImages COMPLETADO ===");
-    console.log("Resultados totales:", results.length);
-    console.log("Exitosos:", results.filter((r) => r.success).length);
-    console.log("Fallidos:", results.filter((r) => !r.success).length);
-    console.log("Resultados finales:", JSON.stringify(results, null, 2));
-
     return results;
   } catch (err) {
-    console.error("=== ERROR FATAL en processBulkImages ===");
-    console.error("Error:", err);
-    console.error("Stack:", err.stack);
-    console.error("Tipo de error:", typeof err);
+    console.error("[BulkProcess] Fatal error:", err.message);
     return [
       {
         success: false,
         oldPath: "",
-        error: err && err.message ? err.message : String(err),
+        error: err?.message || String(err),
       },
     ];
   }

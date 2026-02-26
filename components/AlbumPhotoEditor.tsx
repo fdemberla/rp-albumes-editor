@@ -1,13 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef, useMemo } from "react";
+import { Check } from "lucide-react";
 import type { AlbumPhoto } from "@/types/electron";
-import LocationSearch from "./LocationSearch";
+import type {
+  FieldDescriptor,
+  FormularioGenericoHandle,
+  LocationValue,
+} from "@/types/form";
+import FormularioGenerico from "./FormularioGenerico";
 
 interface AlbumPhotoEditorProps {
   photos: AlbumPhoto[];
   albumId: string;
   onSaved?: () => void;
+}
+
+interface PhotoMetaValues extends Record<string, unknown> {
+  title: string;
+  description: string;
+  artist: string;
+  copyright: string;
+  keywords: string[];
+  location: LocationValue;
 }
 
 export default function AlbumPhotoEditor({
@@ -18,92 +33,88 @@ export default function AlbumPhotoEditor({
   const isSingle = photos.length === 1;
   const photo = isSingle ? photos[0] : null;
 
-  // Metadata state
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [copyright, setCopyright] = useState("");
-  const [artist, setArtist] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [country, setCountry] = useState("");
-  const [gpsLatitude, setGpsLatitude] = useState("");
-  const [gpsLongitude, setGpsLongitude] = useState("");
-
-  // UI state
-  const [keywordInput, setKeywordInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const formRef = useRef<FormularioGenericoHandle<PhotoMetaValues>>(null);
 
-  // Load data from single selected photo
-  useEffect(() => {
+  const defaultValues: PhotoMetaValues = useMemo(() => {
     if (isSingle && photo) {
-      setTitle(photo.title || "");
-      setDescription(photo.description || "");
-      setKeywords(photo.keywords || []);
-      setCopyright(photo.copyright || "");
-      setArtist(photo.artist || "");
-      setCity(photo.city || "");
-      setState(photo.state || "");
-      setCountry(photo.country || "");
-      setGpsLatitude(
-        photo.gpsLatitude != null ? String(photo.gpsLatitude) : "",
-      );
-      setGpsLongitude(
-        photo.gpsLongitude != null ? String(photo.gpsLongitude) : "",
-      );
-    } else {
-      // Reset for multi-edit
-      setTitle("");
-      setDescription("");
-      setKeywords([]);
-      setCopyright("");
-      setArtist("");
-      setCity("");
-      setState("");
-      setCountry("");
-      setGpsLatitude("");
-      setGpsLongitude("");
+      return {
+        title: photo.title || "",
+        description: photo.description || "",
+        artist: photo.artist || "",
+        copyright: photo.copyright || "",
+        keywords: photo.keywords || [],
+        location: {
+          city: photo.city || "",
+          state: photo.state || "",
+          country: photo.country || "",
+          gpsLatitude:
+            photo.gpsLatitude != null ? String(photo.gpsLatitude) : "",
+          gpsLongitude:
+            photo.gpsLongitude != null ? String(photo.gpsLongitude) : "",
+        },
+      };
     }
-    setSaveSuccess(false);
+    return {
+      title: "",
+      description: "",
+      artist: "",
+      copyright: "",
+      keywords: [],
+      location: {
+        city: "",
+        state: "",
+        country: "",
+        gpsLatitude: "",
+        gpsLongitude: "",
+      },
+    };
   }, [photos, isSingle, photo]);
 
-  const handleAddKeyword = () => {
-    const trimmed = keywordInput.trim().toLowerCase();
-    if (trimmed && !keywords.includes(trimmed)) {
-      setKeywords([...keywords, trimmed]);
-    }
-    setKeywordInput("");
-  };
+  const fields: FieldDescriptor[] = [
+    {
+      name: "title",
+      label: "Título",
+      type: "text",
+      placeholder: "Título de la foto",
+      hidden: !isSingle,
+    },
+    {
+      name: "description",
+      label: "Descripción",
+      type: "textarea",
+      rows: 2,
+      placeholder: "Descripción...",
+      hidden: !isSingle,
+    },
+    {
+      name: "artist",
+      label: "Artista / Fotógrafo",
+      type: "text",
+      placeholder: isSingle ? "Nombre del artista" : "Aplicar a todas...",
+    },
+    {
+      name: "copyright",
+      label: "Copyright",
+      type: "text",
+      placeholder: "© 2026 ...",
+    },
+    {
+      name: "keywords",
+      label: "Palabras Clave",
+      type: "keywords",
+      placeholder: "Enter para agregar",
+    },
+    {
+      name: "location",
+      label: "Ubicación",
+      type: "location",
+      showGps: true,
+    },
+  ];
 
-  const handleKeywordKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      handleAddKeyword();
-    }
-  };
-
-  const removeKeyword = (kw: string) => {
-    setKeywords(keywords.filter((k) => k !== kw));
-  };
-
-  const handleLocationSelect = (location: {
-    city: string;
-    state: string;
-    country: string;
-    lat?: number;
-    lon?: number;
-  }) => {
-    setCity(location.city || "");
-    setState(location.state || "");
-    setCountry(location.country || "");
-    if (location.lat) setGpsLatitude(String(location.lat));
-    if (location.lon) setGpsLongitude(String(location.lon));
-    setShowLocationSearch(false);
-  };
-
-  const handleSave = async () => {
+  const handleSubmit = async (values: PhotoMetaValues) => {
     if (!window.electronAPI) return;
 
     setSaving(true);
@@ -111,19 +122,18 @@ export default function AlbumPhotoEditor({
 
     try {
       const metadata: Record<string, unknown> = {};
+      const loc = values.location as LocationValue;
 
-      // For single edit, send all fields
-      // For multi edit, only send fields that have values (non-empty overwrite)
-      if (title) metadata.title = title;
-      if (description) metadata.description = description;
-      if (keywords.length > 0) metadata.keywords = keywords;
-      if (copyright) metadata.copyright = copyright;
-      if (artist) metadata.artist = artist;
-      if (city) metadata.city = city;
-      if (state) metadata.state = state;
-      if (country) metadata.country = country;
-      if (gpsLatitude) metadata.gpsLatitude = gpsLatitude;
-      if (gpsLongitude) metadata.gpsLongitude = gpsLongitude;
+      if (values.title) metadata.title = values.title;
+      if (values.description) metadata.description = values.description;
+      if (values.keywords.length > 0) metadata.keywords = values.keywords;
+      if (values.copyright) metadata.copyright = values.copyright;
+      if (values.artist) metadata.artist = values.artist;
+      if (loc.city) metadata.city = loc.city;
+      if (loc.state) metadata.state = loc.state;
+      if (loc.country) metadata.country = loc.country;
+      if (loc.gpsLatitude) metadata.gpsLatitude = loc.gpsLatitude;
+      if (loc.gpsLongitude) metadata.gpsLongitude = loc.gpsLongitude;
 
       const photoIds = photos.map((p) => p.id);
 
@@ -153,177 +163,31 @@ export default function AlbumPhotoEditor({
           : `Editar ${photos.length} fotos`}
       </h3>
 
-      {/* Title (single only) */}
-      {isSingle && (
-        <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Título
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Título de la foto"
-          />
-        </div>
-      )}
+      <FormularioGenerico<PhotoMetaValues>
+        ref={formRef}
+        fields={fields}
+        defaultValues={defaultValues}
+        onSubmit={handleSubmit}
+        submitLabel={
+          saving
+            ? "Guardando..."
+            : isSingle
+              ? "Guardar Metadatos"
+              : `Aplicar a ${photos.length} fotos`
+        }
+        loading={saving}
+        hideButtons
+      />
 
-      {/* Description (single only) */}
-      {isSingle && (
-        <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Descripción
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className="w-full px-2.5 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-            placeholder="Descripción..."
-          />
-        </div>
-      )}
-
-      {/* Artist */}
-      <div>
-        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-          Artista / Fotógrafo
-        </label>
-        <input
-          type="text"
-          value={artist}
-          onChange={(e) => setArtist(e.target.value)}
-          className="w-full px-2.5 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder={isSingle ? "Nombre del artista" : "Aplicar a todas..."}
-        />
-      </div>
-
-      {/* Copyright */}
-      <div>
-        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-          Copyright
-        </label>
-        <input
-          type="text"
-          value={copyright}
-          onChange={(e) => setCopyright(e.target.value)}
-          className="w-full px-2.5 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="© 2026 ..."
-        />
-      </div>
-
-      {/* Keywords */}
-      <div>
-        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-          Palabras Clave
-        </label>
-        <div className="flex gap-1.5">
-          <input
-            type="text"
-            value={keywordInput}
-            onChange={(e) => setKeywordInput(e.target.value)}
-            onKeyDown={handleKeywordKeyDown}
-            onBlur={handleAddKeyword}
-            placeholder="Enter para agregar"
-            className="flex-1 px-2.5 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <button
-            type="button"
-            onClick={handleAddKeyword}
-            className="px-2 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-500"
-          >
-            +
-          </button>
-        </div>
-        {keywords.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {keywords.map((kw) => (
-              <span
-                key={kw}
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[10px]"
-              >
-                {kw}
-                <button
-                  type="button"
-                  onClick={() => removeKeyword(kw)}
-                  className="hover:text-red-500"
-                >
-                  &times;
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Location */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">
-            Ubicación
-          </label>
-          <button
-            type="button"
-            onClick={() => setShowLocationSearch(!showLocationSearch)}
-            className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            {showLocationSearch ? "Cerrar búsqueda" : "Buscar ubicación"}
-          </button>
-        </div>
-        {showLocationSearch && (
-          <LocationSearch onLocationSelect={handleLocationSelect} />
-        )}
-        <div className="grid grid-cols-3 gap-1.5">
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Ciudad"
-            className="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <input
-            type="text"
-            value={state}
-            onChange={(e) => setState(e.target.value)}
-            placeholder="Estado"
-            className="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <input
-            type="text"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            placeholder="País"
-            className="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          <input
-            type="text"
-            value={gpsLatitude}
-            onChange={(e) => setGpsLatitude(e.target.value)}
-            placeholder="Latitud"
-            className="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <input
-            type="text"
-            value={gpsLongitude}
-            onChange={(e) => setGpsLongitude(e.target.value)}
-            placeholder="Longitud"
-            className="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-      </div>
-
-      {/* Save */}
+      {/* Save button + success toast */}
       <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
         {saveSuccess && (
-          <p className="text-xs text-green-600 dark:text-green-400 mb-2">
-            ✓ Metadatos guardados exitosamente
+          <p className="text-xs text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
+            <Check className="w-3 h-3" /> Metadatos guardados exitosamente
           </p>
         )}
         <button
-          onClick={handleSave}
+          onClick={() => formRef.current?.submit()}
           disabled={saving}
           className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
         >

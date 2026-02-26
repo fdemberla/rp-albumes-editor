@@ -77,17 +77,22 @@ function registerAlbumHandlers() {
   ipcMain.handle("album:create", async (_event, input) => {
     try {
       const db = getPrisma();
+      const data = {
+        name: input.name,
+        description: input.description || null,
+        eventDate: new Date(input.eventDate),
+        city: input.city || null,
+        state: input.state || null,
+        country: input.country || null,
+        keywords: input.keywords || [],
+      };
+      // Support both new FK and legacy text field
+      if (input.photographerId) data.photographerId = input.photographerId;
+      if (input.photographer) data.photographer = input.photographer;
+
       const album = await db.album.create({
-        data: {
-          name: input.name,
-          description: input.description || null,
-          photographer: input.photographer,
-          eventDate: new Date(input.eventDate),
-          city: input.city || null,
-          state: input.state || null,
-          country: input.country || null,
-          keywords: input.keywords || [],
-        },
+        data,
+        include: { fotografo: true },
       });
       return { success: true, album };
     } catch (err) {
@@ -106,17 +111,44 @@ function registerAlbumHandlers() {
         if (filters.name) {
           where.name = { contains: filters.name, mode: "insensitive" };
         }
+        if (filters.photographerId) {
+          where.photographerId = filters.photographerId;
+        }
         if (filters.photographer) {
-          where.photographer = {
-            contains: filters.photographer,
-            mode: "insensitive",
-          };
+          where.OR = [
+            ...(where.OR || []),
+            {
+              photographer: {
+                contains: filters.photographer,
+                mode: "insensitive",
+              },
+            },
+            {
+              fotografo: {
+                firstName: {
+                  contains: filters.photographer,
+                  mode: "insensitive",
+                },
+              },
+            },
+            {
+              fotografo: {
+                lastName: {
+                  contains: filters.photographer,
+                  mode: "insensitive",
+                },
+              },
+            },
+          ];
         }
         if (filters.city) {
           where.city = { contains: filters.city, mode: "insensitive" };
         }
         if (filters.country) {
           where.country = { contains: filters.country, mode: "insensitive" };
+        }
+        if (filters.state) {
+          where.state = { contains: filters.state, mode: "insensitive" };
         }
         if (filters.dateFrom || filters.dateTo) {
           where.eventDate = {};
@@ -132,13 +164,25 @@ function registerAlbumHandlers() {
       const page = (filters && filters.page) || 1;
       const pageSize = (filters && filters.pageSize) || 20;
 
+      // Dynamic sort — validate against allowlist
+      const allowedSortFields = ["eventDate", "name", "createdAt"];
+      const sortBy =
+        filters && allowedSortFields.includes(filters.sortBy)
+          ? filters.sortBy
+          : "eventDate";
+      const sortOrder =
+        filters && ["asc", "desc"].includes(filters.sortOrder)
+          ? filters.sortOrder
+          : "desc";
+
       const [albums, total] = await Promise.all([
         db.album.findMany({
           where,
-          orderBy: { eventDate: "desc" },
+          orderBy: { [sortBy]: sortOrder },
           skip: (page - 1) * pageSize,
           take: pageSize,
           include: {
+            fotografo: true,
             _count: { select: { photos: true } },
             photos: {
               select: { thumbnailPath: true },
@@ -180,6 +224,7 @@ function registerAlbumHandlers() {
       const album = await db.album.findUnique({
         where: { id: albumId },
         include: {
+          fotografo: true,
           photos: {
             orderBy: { createdAt: "asc" },
           },
@@ -213,6 +258,8 @@ function registerAlbumHandlers() {
 
       if (input.name !== undefined) data.name = input.name;
       if (input.description !== undefined) data.description = input.description;
+      if (input.photographerId !== undefined)
+        data.photographerId = input.photographerId || null;
       if (input.photographer !== undefined)
         data.photographer = input.photographer;
       if (input.eventDate !== undefined)
@@ -225,6 +272,7 @@ function registerAlbumHandlers() {
       const album = await db.album.update({
         where: { id: albumId },
         data,
+        include: { fotografo: true },
       });
 
       return { success: true, album };
@@ -273,8 +321,11 @@ function registerAlbumHandlers() {
     try {
       const db = getPrisma();
 
-      // Verify album exists
-      const album = await db.album.findUnique({ where: { id: albumId } });
+      // Verify album exists and include fotografo for artist derivation
+      const album = await db.album.findUnique({
+        where: { id: albumId },
+        include: { fotografo: true },
+      });
       if (!album) {
         return { success: false, error: "Album not found" };
       }
@@ -367,7 +418,13 @@ function registerAlbumHandlers() {
               description: metadata.description || null,
               keywords: mergedKeywords,
               copyright: metadata.copyright || null,
-              artist: album.photographer || metadata.artist || null,
+              artist:
+                (album.fotografo
+                  ? `${album.fotografo.firstName} ${album.fotografo.lastName}`.trim()
+                  : null) ||
+                album.photographer ||
+                metadata.artist ||
+                null,
               dateCreated: albumDateStr || metadata.dateCreated || null,
               city: album.city || photoCity,
               state: album.state || photoState,
@@ -685,4 +742,5 @@ async function cleanup() {
 module.exports = {
   registerAlbumHandlers,
   cleanup,
+  getPrisma,
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useImageStore } from "@/lib/store";
 
 export default function BulkRename() {
@@ -33,7 +34,7 @@ export default function BulkRename() {
 
       const dir = img.filePath.substring(
         0,
-        img.filePath.lastIndexOf("\\") || img.filePath.lastIndexOf("/")
+        img.filePath.lastIndexOf("\\") || img.filePath.lastIndexOf("/"),
       );
       const separator = img.filePath.includes("\\") ? "\\" : "/";
       const newPath = `${dir}${separator}${newName}`;
@@ -82,7 +83,7 @@ export default function BulkRename() {
     } catch (error) {
       alert(
         "Error al renombrar archivos: " +
-          (error instanceof Error ? error.message : "Unknown error")
+          (error instanceof Error ? error.message : "Unknown error"),
       );
     } finally {
       setRenaming(false);
@@ -95,9 +96,12 @@ export default function BulkRename() {
 
   return (
     <div className="space-y-4">
-      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-sm text-amber-800 dark:text-amber-300">
-        ⚠️ Esta operación renombrará {selectedImages.length} archivos. Asegúrate
-        de revisar los cambios antes de aplicar.
+      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2">
+        <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span>
+          Esta operación renombrará {selectedImages.length} archivos. Asegúrate
+          de revisar los cambios antes de aplicar.
+        </span>
       </div>
 
       {/* Pattern Input */}
@@ -164,7 +168,7 @@ export default function BulkRename() {
                     <span className="text-gray-500 dark:text-gray-400 truncate flex-1">
                       {rename.oldName}
                     </span>
-                    <span className="text-gray-400">→</span>
+                    <ArrowRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
                     <span className="text-blue-600 dark:text-blue-400 truncate flex-1 font-medium">
                       {rename.newName}
                     </span>

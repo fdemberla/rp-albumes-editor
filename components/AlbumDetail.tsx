@@ -11,6 +11,7 @@ import type {
   UploadProgress,
   DownloadProgress,
 } from "@/types/electron";
+import { Upload, Image as ImageIcon, Check, ChevronLeft } from "lucide-react";
 import AlbumForm from "./AlbumForm";
 import AlbumPhotoEditor from "./AlbumPhotoEditor";
 import PhotoViewer from "./PhotoViewer";
@@ -231,16 +232,19 @@ export default function AlbumDetail({
       <div className="flex items-center gap-3">
         <button
           onClick={handleBack}
-          className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+          className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-1"
         >
-          &larr; Volver
+          <ChevronLeft className="w-4 h-4" /> Volver
         </button>
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             {currentAlbum.name}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {currentAlbum.photographer} &middot;{" "}
+            {currentAlbum.fotografo
+              ? `${currentAlbum.fotografo.firstName} ${currentAlbum.fotografo.lastName}`
+              : currentAlbum.photographer || "Sin fotógrafo"}{" "}
+            &middot;{" "}
             {new Date(currentAlbum.eventDate).toLocaleDateString("es-PA")}
             {(currentAlbum.city || currentAlbum.country) && (
               <>
@@ -259,7 +263,7 @@ export default function AlbumDetail({
             disabled={isUploading}
             className="px-4 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-1.5"
           >
-            <span>📁</span>
+            <Upload className="w-4 h-4" />
             Subir Fotos
           </button>
           <button
@@ -387,9 +391,9 @@ export default function AlbumDetail({
               </p>
               <button
                 onClick={handleUploadPhotos}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center gap-1.5 mx-auto"
               >
-                📁 Subir Fotos
+                <Upload className="w-4 h-4" /> Subir Fotos
               </button>
             </div>
           )}
@@ -447,9 +451,7 @@ export default function AlbumDetail({
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-3xl text-gray-300 dark:text-gray-600">
-                          📷
-                        </span>
+                        <ImageIcon className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                       )}
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
@@ -459,7 +461,7 @@ export default function AlbumDetail({
                     </div>
                     {isSelected && (
                       <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs">✓</span>
+                        <Check className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </motion.div>
@@ -547,7 +549,7 @@ function UploadProgressBar({ progress }: { progress: UploadProgress | null }) {
           {progress.stage !== "complete" ? (
             <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <span className="text-green-500 text-sm">✓</span>
+            <Check className="w-4 h-4 text-green-500" />
           )}
           <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
             {stageLabels[progress.stage] || progress.stage}
@@ -639,7 +641,7 @@ function DownloadProgressBar({
           {progress.stage !== "complete" ? (
             <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
           ) : (
-            <span className="text-green-500 text-sm">✓</span>
+            <Check className="w-4 h-4 text-green-500" />
           )}
           <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
             {stageLabels[progress.stage] || progress.stage}

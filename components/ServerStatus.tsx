@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Database, Server, ServerOff } from "lucide-react";
 import { useAlbumStore } from "@/lib/albumStore";
 
 export default function ServerStatus() {
@@ -15,28 +16,48 @@ export default function ServerStatus() {
 
   return (
     <div className="flex items-center gap-3 text-xs">
-      <div className="flex items-center gap-1.5">
-        <div
-          className={`w-2 h-2 rounded-full ${
+      <div
+        className="flex items-center gap-1.5"
+        title={
+          dbConnected === null
+            ? "Base de datos: verificando..."
+            : dbConnected
+              ? "Base de datos: conectada"
+              : "Base de datos: desconectada"
+        }
+      >
+        <Database
+          className={`w-3.5 h-3.5 ${
             dbConnected === null
-              ? "bg-gray-400 animate-pulse"
+              ? "text-gray-400 animate-pulse"
               : dbConnected
-                ? "bg-green-500"
-                : "bg-red-500"
+                ? "text-green-500"
+                : "text-red-500"
           }`}
         />
         <span className="text-gray-600 dark:text-gray-400">DB</span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <div
-          className={`w-2 h-2 rounded-full ${
-            sftpConnected === null
-              ? "bg-gray-400 animate-pulse"
-              : sftpConnected
-                ? "bg-green-500"
-                : "bg-red-500"
-          }`}
-        />
+      <div
+        className="flex items-center gap-1.5"
+        title={
+          sftpConnected === null
+            ? "SFTP: verificando..."
+            : sftpConnected
+              ? "SFTP: conectado"
+              : "SFTP: desconectado"
+        }
+      >
+        {sftpConnected === false ? (
+          <ServerOff className="w-3.5 h-3.5 text-red-500" />
+        ) : (
+          <Server
+            className={`w-3.5 h-3.5 ${
+              sftpConnected === null
+                ? "text-gray-400 animate-pulse"
+                : "text-green-500"
+            }`}
+          />
+        )}
         <span className="text-gray-600 dark:text-gray-400">SFTP</span>
       </div>
     </div>

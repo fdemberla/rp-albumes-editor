@@ -10,10 +10,10 @@
     "lint": "eslint",
     "electron": "electron .",
     "electron:dev": "concurrently \"next dev --turbopack\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "next build && electron-builder",
-    "electron:build:win": "next build && electron-builder --win",
-    "electron:build:mac": "next build && electron-builder --mac",
-    "electron:build:linux": "next build && electron-builder --linux"
+    "electron:build": "npx prisma generate && next build && electron-builder",
+    "electron:build:win": "npx prisma generate && next build && electron-builder --win",
+    "electron:build:mac": "npx prisma generate && next build && electron-builder --mac",
+    "electron:build:linux": "npx prisma generate && next build && electron-builder --linux"
   },
   "build": {
     "appId": "com.editormetadatos.app",
@@ -24,15 +24,37 @@
     "files": [
       "electron/**/*",
       "prisma/**/*",
-      ".next/**/*",
+      "out/**/*",
       "node_modules/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": "../.env"
+      },
+      {
+        "from": "node_modules/.prisma",
+        "to": "node_modules/.prisma",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/@prisma",
+        "to": "node_modules/@prisma",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "asarUnpack": [
       "**/node_modules/sharp/**",
       "**/node_modules/@prisma/**",
       "**/node_modules/.prisma/**",
-      "**/node_modules/ssh2/**"
+      "**/node_modules/ssh2/**",
+      "**/node_modules/exiftool-vendored/**",
+      "**/node_modules/@photostructure/**"
     ],
     "win": {
       "target": [
@@ -58,11 +80,15 @@
     }
   },
   "dependencies": {
+    "@azure/msal-node": "^5.0.5",
+    "@azure/msal-node-extensions": "^5.0.5",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
+    "@tanstack/react-form": "^1.28.3",
     "archiver": "^7.0.1",
     "dotenv": "^17.3.1",
     "exiftool-vendored": "^31.1.0",
+    "lucide-react": "^0.575.0",
     "motion": "^12.34.3",
     "next": "15.5.4",
     "pg": "^8.18.0",

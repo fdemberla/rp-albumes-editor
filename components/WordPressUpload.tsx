@@ -1,58 +1,95 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useImageStore } from "@/lib/store";
+import type { FieldDescriptor, FormularioGenericoHandle } from "@/types/form";
+import FormularioGenerico from "./FormularioGenerico";
 
-interface WordPressConfig {
+interface WordPressConfig extends Record<string, unknown> {
   siteUrl: string;
   username: string;
   applicationPassword: string;
 }
 
+const configFields: FieldDescriptor[] = [
+  {
+    name: "siteUrl",
+    label: "URL del Sitio WordPress",
+    type: "text",
+    inputType: "url",
+    placeholder: "https://tusitio.com",
+  },
+  {
+    name: "username",
+    label: "Usuario",
+    type: "text",
+    placeholder: "admin",
+  },
+  {
+    name: "applicationPassword",
+    label: "Application Password",
+    type: "text",
+    inputType: "password",
+    placeholder: "xxxx xxxx xxxx xxxx xxxx xxxx",
+    helperText:
+      "Crea una en: WordPress Admin → Usuarios → Tu Perfil → Application Passwords",
+  },
+];
+
+const configDefaults: WordPressConfig = {
+  siteUrl: "",
+  username: "",
+  applicationPassword: "",
+};
+
 export default function WordPressUpload() {
   const { getSelectedImages } = useImageStore();
   const selectedImages = getSelectedImages();
 
-  const [config, setConfig] = useState<WordPressConfig>({
-    siteUrl: "",
-    username: "",
-    applicationPassword: "",
-  });
-
+  const configRef = useRef<FormularioGenericoHandle<WordPressConfig>>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showConfig, setShowConfig] = useState(false);
 
-  const uploadToWordPress = async (file: File, metadata: any) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("title", metadata.title || "");
-    formData.append("alt_text", metadata.description || "");
-    formData.append("caption", metadata.description || "");
-    formData.append("description", metadata.description || "");
+  const uploadToWordPress = useCallback(
+    async (
+      file: File,
+      metadata: Record<string, unknown>,
+      config: WordPressConfig,
+    ) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", (metadata.title as string) || "");
+      formData.append("alt_text", (metadata.description as string) || "");
+      formData.append("caption", (metadata.description as string) || "");
+      formData.append("description", (metadata.description as string) || "");
 
-    const credentials = btoa(
-      `${config.username}:${config.applicationPassword}`
-    );
+      const credentials = btoa(
+        `${config.username}:${config.applicationPassword}`,
+      );
 
-    const response = await fetch(`${config.siteUrl}/wp-json/wp/v2/media`, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${credentials}`,
-      },
-      body: formData,
-    });
+      const response = await fetch(`${config.siteUrl}/wp-json/wp/v2/media`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${credentials}`,
+        },
+        body: formData,
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    return await response.json();
-  };
+      return await response.json();
+    },
+    [],
+  );
 
   const handleUpload = async () => {
-    if (!config.siteUrl || !config.username || !config.applicationPassword) {
+    const config = configRef.current?.getValues();
+    if (!config?.siteUrl || !config?.username || !config?.applicationPassword) {
       alert("Por favor completa la configuración de WordPress");
+      setShowConfig(true);
       return;
     }
 
@@ -69,14 +106,17 @@ export default function WordPressUpload() {
       let completed = 0;
 
       for (const image of selectedImages) {
-        // Read file from path
         const response = await fetch(image.preview || "");
         const blob = await response.blob();
         const file = new File([blob], image.metadata.fileName, {
           type: "image/jpeg",
         });
 
-        await uploadToWordPress(file, image.metadata);
+        await uploadToWordPress(
+          file,
+          image.metadata as unknown as Record<string, unknown>,
+          config as WordPressConfig,
+        );
 
         completed++;
         setUploadProgress(Math.round((completed / total) * 100));
@@ -86,7 +126,7 @@ export default function WordPressUpload() {
     } catch (error) {
       alert(
         "Error al subir a WordPress: " +
-          (error instanceof Error ? error.message : "Unknown error")
+          (error instanceof Error ? error.message : "Unknown error"),
       );
     } finally {
       setUploading(false);
@@ -109,55 +149,14 @@ export default function WordPressUpload() {
       </div>
 
       {showConfig && (
-        <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              URL del Sitio WordPress
-            </label>
-            <input
-              type="url"
-              value={config.siteUrl}
-              onChange={(e) =>
-                setConfig({ ...config, siteUrl: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://tusitio.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Usuario
-            </label>
-            <input
-              type="text"
-              value={config.username}
-              onChange={(e) =>
-                setConfig({ ...config, username: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="admin"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Application Password
-            </label>
-            <input
-              type="password"
-              value={config.applicationPassword}
-              onChange={(e) =>
-                setConfig({ ...config, applicationPassword: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
-            />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Crea una en: WordPress Admin → Usuarios → Tu Perfil → Application
-              Passwords
-            </p>
-          </div>
+        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+          <FormularioGenerico<WordPressConfig>
+            ref={configRef}
+            fields={configFields}
+            defaultValues={configDefaults}
+            onSubmit={() => {}}
+            hideButtons
+          />
         </div>
       )}
 
@@ -178,7 +177,7 @@ export default function WordPressUpload() {
 
       <button
         onClick={handleUpload}
-        disabled={uploading || selectedImages.length === 0 || !config.siteUrl}
+        disabled={uploading || selectedImages.length === 0}
         className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors"
       >
         {uploading

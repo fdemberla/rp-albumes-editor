@@ -7,22 +7,65 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Auth & Users ──────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique @db.VarChar(320)
+  firstName String   @map("first_name") @db.VarChar(255)
+  lastName  String   @map("last_name") @db.VarChar(255)
+  role      Role     @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fotografo Fotografo?
+
+  @@map("users")
+}
+
+// ─── Fotografos ────────────────────────────────────────────────────────────
+
+model Fotografo {
+  id        String   @id @default(uuid()) @db.Uuid
+  firstName String   @map("first_name") @db.VarChar(255)
+  lastName  String   @map("last_name") @db.VarChar(255)
+  email     String?  @unique @db.VarChar(320)
+  userId    String?  @unique @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  albums Album[]
+
+  @@index([email])
+  @@map("fotografos")
+}
+
+// ─── Albums ────────────────────────────────────────────────────────────────
+
 model Album {
-  id           String   @id @default(uuid()) @db.Uuid
-  name         String   @db.VarChar(255)
-  description  String?  @db.Text
-  photographer String   @db.VarChar(255)
-  eventDate    DateTime @map("event_date") @db.Date
-  city         String?  @db.VarChar(255)
-  state        String?  @db.VarChar(255)
-  country      String?  @db.VarChar(255)
-  keywords     String[] @default([])
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String   @db.VarChar(255)
+  description    String?  @db.Text
+  photographer   String?  @db.VarChar(255) // Legacy — will be removed after data migration
+  photographerId String?  @map("photographer_id") @db.Uuid
+  eventDate      DateTime @map("event_date") @db.Date
+  city           String?  @db.VarChar(255)
+  state          String?  @db.VarChar(255)
+  country        String?  @db.VarChar(255)
+  keywords       String[] @default([])
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  photos Photo[]
+  fotografo Fotografo? @relation(fields: [photographerId], references: [id], onDelete: SetNull)
+  photos    Photo[]
 
-  @@index([photographer])
+  @@index([photographerId])
   @@index([city, country])
   @@index([eventDate])
   @@index([keywords], type: Gin)

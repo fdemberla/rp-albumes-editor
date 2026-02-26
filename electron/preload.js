@@ -3,6 +3,28 @@ const { contextBridge, ipcRenderer } = require("electron");
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld("electronAPI", {
+  // ─── Auth Operations ──────────────────────────────────────────────────
+  login: () => ipcRenderer.invoke("auth:login"),
+  logout: () => ipcRenderer.invoke("auth:logout"),
+  getSession: () => ipcRenderer.invoke("auth:getSession"),
+
+  // ─── User Management (admin) ──────────────────────────────────────────
+  listUsers: () => ipcRenderer.invoke("user:list"),
+  createUser: (input) => ipcRenderer.invoke("user:create", input),
+  updateUser: (userId, input) =>
+    ipcRenderer.invoke("user:update", userId, input),
+  deleteUser: (userId) => ipcRenderer.invoke("user:delete", userId),
+
+  // ─── Fotografo Operations ─────────────────────────────────────────────
+  listFotografos: (search) => ipcRenderer.invoke("fotografo:list", search),
+  createFotografo: (input) => ipcRenderer.invoke("fotografo:create", input),
+  updateFotografo: (fotografoId, input) =>
+    ipcRenderer.invoke("fotografo:update", fotografoId, input),
+  deleteFotografo: (fotografoId) =>
+    ipcRenderer.invoke("fotografo:delete", fotografoId),
+  getFotografoByEmail: (email) =>
+    ipcRenderer.invoke("fotografo:getByEmail", email),
+
   // Dialog operations
   openFiles: () => ipcRenderer.invoke("dialog:openFiles"),
   openFolder: () => ipcRenderer.invoke("dialog:openFolder"),

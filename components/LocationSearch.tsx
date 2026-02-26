@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Search, MapPin, Lightbulb } from "lucide-react";
 
 interface LocationSearchProps {
   onLocationSelect: (location: {
@@ -90,7 +91,13 @@ export default function LocationSearch({
           disabled={searching || !searchQuery.trim()}
           className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm rounded-lg transition-colors whitespace-nowrap"
         >
-          {searching ? "Buscando..." : "🔍 Buscar"}
+          {searching ? (
+            "Buscando..."
+          ) : (
+            <>
+              <Search className="w-4 h-4 inline" /> Buscar
+            </>
+          )}
         </button>
       </div>
 
@@ -109,8 +116,9 @@ export default function LocationSearch({
               <div className="font-medium text-gray-900 dark:text-white">
                 {result.display_name}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                📍 GPS: {parseFloat(result.lat).toFixed(6)},{" "}
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                <MapPin className="w-3 h-3" /> GPS:{" "}
+                {parseFloat(result.lat).toFixed(6)},{" "}
                 {parseFloat(result.lon).toFixed(6)}
               </div>
             </button>
@@ -118,9 +126,12 @@ export default function LocationSearch({
         </div>
       )}
 
-      <div className="text-xs text-gray-500 dark:text-gray-400">
-        💡 Busca por ciudad, dirección o lugar. Se guardarán las coordenadas GPS
-        junto con la ubicación.
+      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1">
+        <Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" />
+        <span>
+          Busca por ciudad, dirección o lugar. Se guardarán las coordenadas GPS
+          junto con la ubicación.
+        </span>
       </div>
     </div>
   );

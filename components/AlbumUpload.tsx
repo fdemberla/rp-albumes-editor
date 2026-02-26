@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ChevronLeft, X } from "lucide-react";
 import { useAlbumStore } from "@/lib/albumStore";
 import { useImageStore } from "@/lib/store";
 import type {
@@ -85,9 +86,9 @@ export default function AlbumUpload({ onClose }: AlbumUploadProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreateForm(false)}
-            className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            className="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center gap-1"
           >
-            &larr;
+            <ChevronLeft className="w-4 h-4" />
           </button>
           <h3 className="font-medium text-gray-900 dark:text-white">
             Crear nuevo álbum
@@ -113,7 +114,7 @@ export default function AlbumUpload({ onClose }: AlbumUploadProps) {
           onClick={onClose}
           className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
-          &times;
+          <X className="w-4 h-4" />
         </button>
       </div>
 
@@ -134,7 +135,7 @@ export default function AlbumUpload({ onClose }: AlbumUploadProps) {
               {albumError}
             </p>
             <button onClick={clearError} className="text-red-500 text-sm">
-              &times;
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

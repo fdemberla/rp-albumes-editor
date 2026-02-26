@@ -1,9 +1,24 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
+import { FileText, Copy, FolderOutput } from "lucide-react";
 import { useImageStore } from "@/lib/store";
-import { ImageMetadata } from "@/types/electron";
-import LocationSearch from "./LocationSearch";
+import type { ImageMetadata } from "@/types/electron";
+import type {
+  FieldDescriptor,
+  FormularioGenericoHandle,
+  LocationValue,
+} from "@/types/form";
+import FormularioGenerico from "./FormularioGenerico";
+
+interface MetaFormValues extends Record<string, unknown> {
+  title: string;
+  description: string;
+  keywords: string[];
+  copyright: string;
+  artist: string;
+  location: LocationValue;
+}
 
 export default function ImageEditor() {
   const {
@@ -15,46 +30,17 @@ export default function ImageEditor() {
   // Get actual selected images with useMemo
   const selectedImages = useMemo(
     () => images.filter((img) => selectedImageIds.includes(img.id)),
-    [images, selectedImageIds]
+    [images, selectedImageIds],
   );
 
-  // Metadata state
-  const [metadata, setMetadata] = useState<Partial<ImageMetadata>>({
-    title: "",
-    description: "",
-    keywords: [],
-    copyright: "",
-    artist: "",
-    location: {
-      city: "",
-      state: "",
-      country: "",
-      gpsLatitude: "",
-      gpsLongitude: "",
-    },
-  });
+  // Form ref for reading metadata values
+  const formRef = useRef<FormularioGenericoHandle<MetaFormValues>>(null);
 
-  // Rename state
-  const [pattern, setPattern] = useState("");
-  const [startNumber, setStartNumber] = useState(1);
-  const [numberPadding, setNumberPadding] = useState(3);
-
-  // File operation state
-  // Por defecto mantenemos los archivos originales (copias)
-  const [keepOriginals, setKeepOriginals] = useState(true);
-  const [outputFolder, setOutputFolder] = useState<string | null>(null);
-  const [operation, setOperation] = useState<"copy" | "move">("copy");
-
-  // UI state
-  const [keywordInput, setKeywordInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [showLocationSearch, setShowLocationSearch] = useState(false);
-
-  // Load metadata from first selected image
-  useEffect(() => {
+  // Default values from selected image(s)
+  const metaDefaultValues: MetaFormValues = useMemo(() => {
     if (selectedImages.length === 1) {
       const img = selectedImages[0];
-      setMetadata({
+      return {
         title: img.metadata.title || "",
         description: img.metadata.description || "",
         keywords: img.metadata.keywords || [],
@@ -67,25 +53,71 @@ export default function ImageEditor() {
           gpsLatitude: img.metadata.location?.gpsLatitude || "",
           gpsLongitude: img.metadata.location?.gpsLongitude || "",
         },
-      });
-    } else if (selectedImages.length > 1) {
-      // Reset for bulk edit
-      setMetadata({
-        title: "",
-        description: "",
-        keywords: [],
-        copyright: "",
-        artist: "",
-        location: {
-          city: "",
-          state: "",
-          country: "",
-          gpsLatitude: "",
-          gpsLongitude: "",
-        },
-      });
+      };
     }
+    return {
+      title: "",
+      description: "",
+      keywords: [],
+      copyright: "",
+      artist: "",
+      location: {
+        city: "",
+        state: "",
+        country: "",
+        gpsLatitude: "",
+        gpsLongitude: "",
+      },
+    };
   }, [selectedImages]);
+
+  const metaFields: FieldDescriptor[] = [
+    {
+      name: "title",
+      label: "Título",
+      type: "text",
+      placeholder: "Título de la imagen",
+    },
+    {
+      name: "description",
+      label: "Descripción",
+      type: "textarea",
+      rows: 3,
+      placeholder: "Descripción detallada para WordPress",
+    },
+    {
+      name: "keywords",
+      label: "Palabras Clave",
+      type: "keywords",
+      placeholder: "Agregar palabra clave",
+    },
+    {
+      name: "copyright",
+      label: "Copyright",
+      type: "text",
+      placeholder: "© 2026 Tu Organización",
+    },
+    {
+      name: "artist",
+      label: "Fotógrafo",
+      type: "text",
+      placeholder: "Nombre del fotógrafo",
+    },
+    { name: "location", label: "Ubicación", type: "location", showGps: true },
+  ];
+
+  // Rename state
+  const [pattern, setPattern] = useState("");
+  const [startNumber, setStartNumber] = useState(1);
+  const [numberPadding, setNumberPadding] = useState(3);
+
+  // File operation state
+  const [keepOriginals, setKeepOriginals] = useState(true);
+  const [outputFolder, setOutputFolder] = useState<string | null>(null);
+  const [operation, setOperation] = useState<"copy" | "move">("copy");
+
+  // UI state
+  const [saving, setSaving] = useState(false);
 
   // Generate preview of new filenames
   const previewRenames = useMemo(() => {
@@ -106,7 +138,7 @@ export default function ImageEditor() {
 
       const dir = img.filePath.substring(
         0,
-        img.filePath.lastIndexOf("\\") || img.filePath.lastIndexOf("/")
+        img.filePath.lastIndexOf("\\") || img.filePath.lastIndexOf("/"),
       );
       const separator = img.filePath.includes("\\") ? "\\" : "/";
       const newPath = `${dir}${separator}${newName}`;
@@ -120,45 +152,6 @@ export default function ImageEditor() {
       };
     });
   }, [selectedImages, pattern, startNumber, numberPadding]);
-
-  // Handle keyword operations
-  const handleAddKeyword = () => {
-    if (keywordInput.trim()) {
-      setMetadata({
-        ...metadata,
-        keywords: [...(metadata.keywords || []), keywordInput.trim()],
-      });
-      setKeywordInput("");
-    }
-  };
-
-  const handleRemoveKeyword = (index: number) => {
-    setMetadata({
-      ...metadata,
-      keywords: metadata.keywords?.filter((_, i) => i !== index) || [],
-    });
-  };
-
-  // Handle location selection
-  const handleLocationSelect = (location: {
-    city: string;
-    state: string;
-    country: string;
-    latitude: number;
-    longitude: number;
-  }) => {
-    setMetadata({
-      ...metadata,
-      location: {
-        city: location.city,
-        state: location.state,
-        country: location.country,
-        gpsLatitude: location.latitude.toFixed(6),
-        gpsLongitude: location.longitude.toFixed(6),
-      },
-    });
-    setShowLocationSearch(false);
-  };
 
   // Select output folder
   const handleSelectOutputFolder = async () => {
@@ -180,11 +173,29 @@ export default function ImageEditor() {
       // If user deselects keeping originals, require an output folder
       if (!keepOriginals && !outputFolder) {
         alert(
-          "Si no mantienes los archivos originales, por favor selecciona una carpeta de salida"
+          "Si no mantienes los archivos originales, por favor selecciona una carpeta de salida",
         );
         setSaving(false);
         return;
       }
+
+      // Read metadata from the generic form
+      const formValues = formRef.current?.getValues();
+      const loc = formValues?.location as LocationValue | undefined;
+      const metadata: Partial<ImageMetadata> = {
+        title: (formValues?.title as string) || "",
+        description: (formValues?.description as string) || "",
+        keywords: (formValues?.keywords as string[]) || [],
+        copyright: (formValues?.copyright as string) || "",
+        artist: (formValues?.artist as string) || "",
+        location: {
+          city: loc?.city || "",
+          state: loc?.state || "",
+          country: loc?.country || "",
+          gpsLatitude: loc?.gpsLatitude || "",
+          gpsLongitude: loc?.gpsLongitude || "",
+        },
+      };
 
       // Build operations depending on keepOriginals
       // - keepOriginals === true: create copies (default behaviour)
@@ -223,15 +234,23 @@ export default function ImageEditor() {
       console.log("keepOriginals:", keepOriginals);
       console.log("outputFolder:", outputFolder);
       console.log("window.electronAPI:", window.electronAPI);
-      console.log("window.electronAPI.processBulkImages:", window.electronAPI.processBulkImages);
-      console.log("Tipo de processBulkImages:", typeof window.electronAPI.processBulkImages);
+      console.log(
+        "window.electronAPI.processBulkImages:",
+        window.electronAPI.processBulkImages,
+      );
+      console.log(
+        "Tipo de processBulkImages:",
+        typeof window.electronAPI.processBulkImages,
+      );
 
-      if (typeof window.electronAPI.processBulkImages !== 'function') {
-        throw new Error("processBulkImages no está disponible en electronAPI. Reinicia la aplicación.");
+      if (typeof window.electronAPI.processBulkImages !== "function") {
+        throw new Error(
+          "processBulkImages no está disponible en electronAPI. Reinicia la aplicación.",
+        );
       }
 
       const results = await window.electronAPI.processBulkImages(operations);
-      
+
       console.log("=== DEBUG: Resultados recibidos ===");
       console.log("Total resultados:", results.length);
       console.log("Resultados:", JSON.stringify(results, null, 2));
@@ -248,17 +267,17 @@ export default function ImageEditor() {
               filePath: result.newPath,
             });
           }
-        }
+        },
       );
 
       const failedCount = results.filter(
-        (r: { success: boolean }) => !r.success
+        (r: { success: boolean }) => !r.success,
       ).length;
       if (failedCount > 0) {
         alert(
           `${failedCount} archivos fallaron. ${
             results.length - failedCount
-          } procesados exitosamente`
+          } procesados exitosamente`,
         );
       } else {
         alert(
@@ -266,16 +285,16 @@ export default function ImageEditor() {
             keepOriginals
               ? "copiados"
               : operation === "copy"
-              ? "copiados"
-              : "movidos"
-          } exitosamente`
+                ? "copiados"
+                : "movidos"
+          } exitosamente`,
         );
         setPattern("");
       }
     } catch (error) {
       alert(
         "Error al procesar: " +
-          (error instanceof Error ? error.message : "Unknown error")
+          (error instanceof Error ? error.message : "Unknown error"),
       );
     } finally {
       setSaving(false);
@@ -299,274 +318,19 @@ export default function ImageEditor() {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
           Metadatos
         </h3>
-        <div className="space-y-4">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Título
-            </label>
-            <input
-              type="text"
-              value={metadata.title}
-              onChange={(e) =>
-                setMetadata({ ...metadata, title: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Título de la imagen"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Descripción
-            </label>
-            <textarea
-              value={metadata.description}
-              onChange={(e) =>
-                setMetadata({ ...metadata, description: e.target.value })
-              }
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Descripción detallada para WordPress"
-            />
-          </div>
-
-          {/* Keywords */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Palabras Clave
-            </label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && (e.preventDefault(), handleAddKeyword())
-                }
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Agregar palabra clave"
-              />
-              <button
-                onClick={handleAddKeyword}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-              >
-                Agregar
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {metadata.keywords?.map((keyword, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded-full text-sm"
-                >
-                  {keyword}
-                  <button
-                    onClick={() => handleRemoveKeyword(index)}
-                    className="hover:text-blue-600 dark:hover:text-blue-200"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Copyright */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Copyright
-            </label>
-            <input
-              type="text"
-              value={metadata.copyright}
-              onChange={(e) =>
-                setMetadata({ ...metadata, copyright: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="© 2025 Tu Organización"
-            />
-          </div>
-
-          {/* Artist/Photographer */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Fotógrafo
-            </label>
-            <input
-              type="text"
-              value={metadata.artist}
-              onChange={(e) =>
-                setMetadata({ ...metadata, artist: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Nombre del fotógrafo"
-            />
-          </div>
-
-          {/* Location with GPS */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Ubicación
-              </label>
-              <button
-                onClick={() => setShowLocationSearch(!showLocationSearch)}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {showLocationSearch ? "✕ Cerrar" : "🌍 Buscar en mapa"}
-              </button>
-            </div>
-
-            {showLocationSearch && (
-              <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                <LocationSearch onLocationSelect={handleLocationSelect} />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={metadata.location?.city || ""}
-                onChange={(e) =>
-                  setMetadata({
-                    ...metadata,
-                    location: {
-                      ...metadata.location,
-                      city: e.target.value,
-                      state: metadata.location?.state || "",
-                      country: metadata.location?.country || "",
-                      gpsLatitude: metadata.location?.gpsLatitude || "",
-                      gpsLongitude: metadata.location?.gpsLongitude || "",
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ciudad"
-              />
-              <input
-                type="text"
-                value={metadata.location?.state || ""}
-                onChange={(e) =>
-                  setMetadata({
-                    ...metadata,
-                    location: {
-                      ...metadata.location,
-                      city: metadata.location?.city || "",
-                      state: e.target.value,
-                      country: metadata.location?.country || "",
-                      gpsLatitude: metadata.location?.gpsLatitude || "",
-                      gpsLongitude: metadata.location?.gpsLongitude || "",
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Estado/Provincia"
-              />
-              <input
-                type="text"
-                value={metadata.location?.country || ""}
-                onChange={(e) =>
-                  setMetadata({
-                    ...metadata,
-                    location: {
-                      ...metadata.location,
-                      city: metadata.location?.city || "",
-                      state: metadata.location?.state || "",
-                      country: e.target.value,
-                      gpsLatitude: metadata.location?.gpsLatitude || "",
-                      gpsLongitude: metadata.location?.gpsLongitude || "",
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="País"
-              />
-
-              {/* GPS Coordinates */}
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                  Coordenadas GPS
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={metadata.location?.gpsLatitude || ""}
-                    onChange={(e) =>
-                      setMetadata({
-                        ...metadata,
-                        location: {
-                          ...metadata.location,
-                          city: metadata.location?.city || "",
-                          state: metadata.location?.state || "",
-                          country: metadata.location?.country || "",
-                          gpsLatitude: e.target.value,
-                          gpsLongitude: metadata.location?.gpsLongitude || "",
-                        },
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Latitud"
-                  />
-                  <input
-                    type="text"
-                    value={metadata.location?.gpsLongitude || ""}
-                    onChange={(e) =>
-                      setMetadata({
-                        ...metadata,
-                        location: {
-                          ...metadata.location,
-                          city: metadata.location?.city || "",
-                          state: metadata.location?.state || "",
-                          country: metadata.location?.country || "",
-                          gpsLatitude: metadata.location?.gpsLatitude || "",
-                          gpsLongitude: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Longitud"
-                  />
-                </div>
-
-                {metadata.location?.gpsLatitude &&
-                  metadata.location?.gpsLongitude &&
-                  (() => {
-                    const lat = parseFloat(
-                      metadata.location.gpsLatitude || "0"
-                    );
-                    const lng = parseFloat(
-                      metadata.location.gpsLongitude || "0"
-                    );
-                    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-                    return (
-                      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
-                        <span>
-                          📌 {metadata.location.gpsLatitude},{" "}
-                          {metadata.location.gpsLongitude}
-                        </span>
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                          Ver en Google Maps →
-                        </a>
-                      </div>
-                    );
-                  })()}
-              </div>
-            </div>
-          </div>
-        </div>
+        <FormularioGenerico<MetaFormValues>
+          ref={formRef}
+          fields={metaFields}
+          defaultValues={metaDefaultValues}
+          onSubmit={() => {}}
+          hideButtons
+        />
       </div>
 
       {/* RENOMBRAR SECTION */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-          🔤 Renombrar Archivos
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+          <FileText className="w-5 h-5" /> Renombrar Archivos
         </h3>
         <div className="space-y-4">
           {/* Pattern Input */}
@@ -711,8 +475,8 @@ export default function ImageEditor() {
                     }
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    📋 Copiar archivos
+                  <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <Copy className="w-4 h-4" /> Copiar archivos
                   </span>
                 </label>
                 <label className="flex items-center gap-2">
@@ -726,8 +490,8 @@ export default function ImageEditor() {
                     }
                     className="w-4 h-4"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    ↗️ Mover archivos
+                  <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <FolderOutput className="w-4 h-4" /> Mover archivos
                   </span>
                 </label>
               </div>
