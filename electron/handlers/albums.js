@@ -337,13 +337,14 @@ function registerAlbumHandlers() {
       for (let i = 0; i < total; i++) {
         const photo = photos[i];
         const isVideo = compression.isVideoFile(photo.filePath);
+        const isRaw = compression.isRawFile(photo.filePath);
 
         // Send progress to renderer
         event.sender.send("album:uploadProgress", {
           current: i + 1,
           total,
           fileName: path.basename(photo.filePath),
-          stage: isVideo ? "uploading" : "compressing",
+          stage: (isVideo || isRaw) ? "uploading" : "compressing",
         });
 
         try {
@@ -365,8 +366,32 @@ function registerAlbumHandlers() {
               i + 1,
               true, // preserveExtension
             );
+          } else if (isRaw) {
+            // ── RAW photo: upload as-is (no compression), generate thumbnail ──
+            fileBuffer = await fs.promises.readFile(photo.filePath);
+            fileSize = fileBuffer.length;
+
+            // Get dimensions from RAW via sharp metadata
+            try {
+              const rawMeta = await require("sharp")(photo.filePath).metadata();
+              fileWidth = rawMeta.width || null;
+              fileHeight = rawMeta.height || null;
+            } catch {
+              fileWidth = null;
+              fileHeight = null;
+            }
+
+            // Generate thumbnail (sharp can read most RAW formats via libvips)
+            thumbnail = await compression.generateThumbnail(photo.filePath);
+
+            // Preserve original RAW extension
+            storedFilename = makeStoredFilename(
+              path.basename(photo.filePath),
+              i + 1,
+              true, // preserveExtension
+            );
           } else {
-            // ── Photo: compress and generate thumbnail ──
+            // ── JPEG/PNG photo: compress and generate thumbnail ──
             const compressed = await compression.compressPhoto(photo.filePath);
             fileBuffer = compressed.buffer;
             fileSize = compressed.size;
@@ -553,18 +578,47 @@ function registerAlbumHandlers() {
     }
   });
 
-  // ─── Get Photo (full compressed version as base64) ─────────────────────
+  // ─── Get Photo (full version as base64) ─────────────────────────────────
   ipcMain.handle("album:getPhoto", async (_event, storedPath) => {
     try {
       const buffer = await storage.downloadFile(storedPath);
       const ext = path.extname(storedPath).toLowerCase();
       const isVideo = ext === ".mp4";
-      const mimeType = isVideo ? "video/mp4" : "image/jpeg";
+      const rawExts = [".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".dng", ".raf", ".pef"];
+      const isRaw = rawExts.includes(ext);
+
+      if (isVideo) {
+        const base64 = buffer.toString("base64");
+        return {
+          success: true,
+          data: `data:video/mp4;base64,${base64}`,
+          mediaType: "video",
+        };
+      }
+
+      if (isRaw) {
+        // Convert RAW to JPEG for browser display via sharp
+        const sharp = require("sharp");
+        const jpegBuffer = await sharp(buffer)
+          .rotate()
+          .jpeg({ quality: 92 })
+          .toBuffer();
+        const base64 = jpegBuffer.toString("base64");
+        return {
+          success: true,
+          data: `data:image/jpeg;base64,${base64}`,
+          mediaType: "photo",
+        };
+      }
+
+      // JPEG / PNG
+      let mimeType = "image/jpeg";
+      if (ext === ".png") mimeType = "image/png";
       const base64 = buffer.toString("base64");
       return {
         success: true,
         data: `data:${mimeType};base64,${base64}`,
-        mediaType: isVideo ? "video" : "photo",
+        mediaType: "photo",
       };
     } catch (err) {
       return { success: false, error: err.message };
@@ -669,8 +723,8 @@ function registerAlbumHandlers() {
             defaultPath: defaultName,
             filters: [
               {
-                name: "Imágenes y Videos",
-                extensions: ["jpg", "jpeg", "png", "webp", "tiff", "mp4"],
+                name: "Fotos y Videos",
+                extensions: ["jpg", "jpeg", "png", "cr2", "cr3", "nef", "arw", "orf", "rw2", "dng", "raf", "pef", "mp4"],
               },
               { name: "Todos los archivos", extensions: ["*"] },
             ],

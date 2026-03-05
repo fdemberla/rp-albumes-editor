@@ -259,8 +259,9 @@ export default function AlbumUpload({ onClose }: AlbumUploadProps) {
       {/* Info */}
       {!uploadComplete && (
         <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-          Las fotos serán comprimidas a JPEG antes de subir. Los videos .mp4 se
-          suben sin compresión. Se generarán thumbnails automáticamente.
+          Las fotos JPEG y PNG serán comprimidas antes de subir. Las fotos RAW y
+          los videos MP4 se suben sin compresión. Se generarán thumbnails
+          automáticamente.
         </p>
       )}
     </div>

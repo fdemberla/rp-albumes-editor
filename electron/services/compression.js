@@ -82,6 +82,9 @@ async function generateThumbnail(inputPath, options = {}) {
   };
 }
 
+/** RAW image extensions supported by the app. */
+const RAW_EXTENSIONS = [".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".dng", ".raf", ".pef"];
+
 /**
  * Check if a file is a video based on its extension.
  * @param {string} filePath
@@ -90,6 +93,16 @@ async function generateThumbnail(inputPath, options = {}) {
 function isVideoFile(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   return [".mp4"].includes(ext);
+}
+
+/**
+ * Check if a file is a RAW image based on its extension.
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+function isRawFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return RAW_EXTENSIONS.includes(ext);
 }
 
 /**
@@ -149,4 +162,5 @@ module.exports = {
   generateThumbnail,
   generateVideoThumbnail,
   isVideoFile,
+  isRawFile,
 };
