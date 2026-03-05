@@ -128,7 +128,7 @@ ipcMain.handle("dialog:openFiles", async () => {
     properties: ["openFile", "multiSelections"],
     filters: [
       {
-        name: "Images",
+        name: "Images & Videos",
         extensions: [
           "jpg",
           "jpeg",
@@ -138,6 +138,7 @@ ipcMain.handle("dialog:openFiles", async () => {
           "tiff",
           "webp",
           "heic",
+          "mp4",
         ],
       },
     ],
@@ -392,6 +393,7 @@ ipcMain.handle("image:getPreview", async (event, filePath) => {
     else if (ext === ".gif") mimeType = "image/gif";
     else if (ext === ".webp") mimeType = "image/webp";
     else if (ext === ".bmp") mimeType = "image/bmp";
+    else if (ext === ".mp4") mimeType = "video/mp4";
 
     return {
       success: true,
@@ -418,6 +420,7 @@ ipcMain.handle("folder:listImages", async (event, folderPath) => {
       ".tiff",
       ".webp",
       ".heic",
+      ".mp4",
     ];
 
     const imageFiles = files

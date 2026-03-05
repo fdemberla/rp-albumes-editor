@@ -44,12 +44,13 @@ function sanitizeFilename(name) {
  * @param {number} index
  * @returns {string}
  */
-function makeStoredFilename(originalName, index) {
+function makeStoredFilename(originalName, index, preserveExtension = false) {
   const safe = sanitizeFilename(originalName);
   const ext = path.extname(safe) || ".jpg";
   const base = path.basename(safe, ext);
   const padded = String(index).padStart(4, "0");
-  return `${base}_${padded}${ext}`.toLowerCase().replace(/\s+/g, "_");
+  const finalExt = preserveExtension ? ext : ".jpg";
+  return `${base}_${padded}${finalExt}`.toLowerCase().replace(/\s+/g, "_");
 }
 
 /**
@@ -335,31 +336,53 @@ function registerAlbumHandlers() {
 
       for (let i = 0; i < total; i++) {
         const photo = photos[i];
+        const isVideo = compression.isVideoFile(photo.filePath);
 
         // Send progress to renderer
         event.sender.send("album:uploadProgress", {
           current: i + 1,
           total,
           fileName: path.basename(photo.filePath),
-          stage: "compressing",
+          stage: isVideo ? "uploading" : "compressing",
         });
 
         try {
-          // 1. Compress the photo
-          const compressed = await compression.compressPhoto(photo.filePath);
+          let fileBuffer, fileSize, fileWidth, fileHeight, thumbnail, storedFilename;
 
-          // 2. Generate thumbnail
-          const thumbnail = await compression.generateThumbnail(photo.filePath);
+          if (isVideo) {
+            // ── Video: read raw file (already compressed), generate thumbnail ──
+            fileBuffer = await fs.promises.readFile(photo.filePath);
+            fileSize = fileBuffer.length;
+            fileWidth = null;
+            fileHeight = null;
 
-          // 3. Build stored filename
-          const storedFilename = makeStoredFilename(
-            path.basename(photo.filePath),
-            i + 1,
-          );
-          // Force .jpg extension since we're converting to JPEG
-          const jpgFilename = storedFilename.replace(/\.[^.]+$/, ".jpg");
+            // Generate thumbnail from video frame
+            thumbnail = await compression.generateVideoThumbnail(photo.filePath);
 
-          // 4. Upload compressed photo to SFTP
+            // Preserve .mp4 extension for videos
+            storedFilename = makeStoredFilename(
+              path.basename(photo.filePath),
+              i + 1,
+              true, // preserveExtension
+            );
+          } else {
+            // ── Photo: compress and generate thumbnail ──
+            const compressed = await compression.compressPhoto(photo.filePath);
+            fileBuffer = compressed.buffer;
+            fileSize = compressed.size;
+            fileWidth = compressed.width;
+            fileHeight = compressed.height;
+
+            thumbnail = await compression.generateThumbnail(photo.filePath);
+
+            // Force .jpg extension since we're converting to JPEG
+            storedFilename = makeStoredFilename(
+              path.basename(photo.filePath),
+              i + 1,
+            ).replace(/\.[^.]+$/, ".jpg");
+          }
+
+          // Upload file to SFTP
           event.sender.send("album:uploadProgress", {
             current: i + 1,
             total,
@@ -369,20 +392,21 @@ function registerAlbumHandlers() {
 
           const storedPath = await storage.uploadPhoto(
             albumId,
-            jpgFilename,
-            compressed.buffer,
+            storedFilename,
+            fileBuffer,
             album.eventDate,
           );
 
-          // 5. Upload thumbnail to SFTP
+          // Upload thumbnail to SFTP (thumbnails are always .jpg)
+          const thumbFilename = storedFilename.replace(/\.[^.]+$/, ".jpg");
           const thumbnailPath = await storage.uploadThumbnail(
             albumId,
-            jpgFilename,
+            thumbFilename,
             thumbnail.buffer,
             album.eventDate,
           );
 
-          // 6. Save record in PostgreSQL
+          // Save record in PostgreSQL
           //    Inherit metadata from album (album fields always override)
           const metadata = photo.metadata || {};
           const photoCity =
@@ -408,12 +432,13 @@ function registerAlbumHandlers() {
             data: {
               albumId: albumId,
               originalFilename: path.basename(photo.filePath),
-              storedFilename: jpgFilename,
+              storedFilename: storedFilename,
               storedPath: storedPath,
               thumbnailPath: thumbnailPath,
-              fileSize: compressed.size,
-              width: compressed.width,
-              height: compressed.height,
+              mediaType: isVideo ? "video" : "photo",
+              fileSize: fileSize,
+              width: fileWidth,
+              height: fileHeight,
               title: metadata.title || null,
               description: metadata.description || null,
               keywords: mergedKeywords,
@@ -447,11 +472,11 @@ function registerAlbumHandlers() {
             originalFile: photo.filePath,
             photoId: dbPhoto.id,
             storedPath,
-            compressedSize: compressed.size,
+            compressedSize: fileSize,
           });
         } catch (photoErr) {
           console.error(
-            `[Album] Error processing photo ${i + 1}:`,
+            `[Album] Error processing ${isVideo ? "video" : "photo"} ${i + 1}:`,
             photoErr.message,
           );
           results.push({
@@ -532,10 +557,14 @@ function registerAlbumHandlers() {
   ipcMain.handle("album:getPhoto", async (_event, storedPath) => {
     try {
       const buffer = await storage.downloadFile(storedPath);
+      const ext = path.extname(storedPath).toLowerCase();
+      const isVideo = ext === ".mp4";
+      const mimeType = isVideo ? "video/mp4" : "image/jpeg";
       const base64 = buffer.toString("base64");
       return {
         success: true,
-        data: `data:image/jpeg;base64,${base64}`,
+        data: `data:${mimeType};base64,${base64}`,
+        mediaType: isVideo ? "video" : "photo",
       };
     } catch (err) {
       return { success: false, error: err.message };
@@ -640,8 +669,8 @@ function registerAlbumHandlers() {
             defaultPath: defaultName,
             filters: [
               {
-                name: "Imágenes",
-                extensions: ["jpg", "jpeg", "png", "webp", "tiff"],
+                name: "Imágenes y Videos",
+                extensions: ["jpg", "jpeg", "png", "webp", "tiff", "mp4"],
               },
               { name: "Todos los archivos", extensions: ["*"] },
             ],

@@ -1,4 +1,11 @@
 const sharp = require("sharp");
+const ffmpeg = require("fluent-ffmpeg");
+const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
+
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 /**
  * Compress a photo for storage.
@@ -75,7 +82,71 @@ async function generateThumbnail(inputPath, options = {}) {
   };
 }
 
+/**
+ * Check if a file is a video based on its extension.
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+function isVideoFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return [".mp4"].includes(ext);
+}
+
+/**
+ * Generate a JPEG thumbnail from a video file by extracting a frame at 1 second.
+ *
+ * @param {string} inputPath - Path to the source video file
+ * @param {object} [options]
+ * @param {number} [options.width=400] - Thumbnail width in pixels
+ * @param {number} [options.quality=75] - JPEG quality
+ * @returns {Promise<{buffer: Buffer, width: number, height: number, size: number}>}
+ */
+async function generateVideoThumbnail(inputPath, options = {}) {
+  const thumbWidth = options.width || 400;
+  const quality = options.quality || 75;
+
+  // Extract a frame from the video to a temp file
+  const tmpDir = os.tmpdir();
+  const tmpFilename = `thumb_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+  const tmpPath = path.join(tmpDir, tmpFilename);
+
+  await new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .on("error", reject)
+      .on("end", resolve)
+      .screenshots({
+        count: 1,
+        timemarks: ["00:00:01"],
+        folder: tmpDir,
+        filename: tmpFilename,
+        size: `${thumbWidth}x?`,
+      });
+  });
+
+  // Process the extracted frame with sharp for consistent output
+  const outputBuffer = await sharp(tmpPath)
+    .resize({ width: thumbWidth, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality, mozjpeg: true })
+    .toBuffer({ resolveWithObject: true });
+
+  // Clean up temp file
+  try {
+    fs.unlinkSync(tmpPath);
+  } catch {
+    // ignore cleanup errors
+  }
+
+  return {
+    buffer: outputBuffer.data,
+    width: outputBuffer.info.width,
+    height: outputBuffer.info.height,
+    size: outputBuffer.info.size,
+  };
+}
+
 module.exports = {
   compressPhoto,
   generateThumbnail,
+  generateVideoThumbnail,
+  isVideoFile,
 };

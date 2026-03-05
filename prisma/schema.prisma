@@ -79,6 +79,7 @@ model Photo {
   storedFilename   String   @map("stored_filename") @db.VarChar(500)
   storedPath       String   @map("stored_path") @db.VarChar(1000)
   thumbnailPath    String?  @map("thumbnail_path") @db.VarChar(1000)
+  mediaType        String   @default("photo") @map("media_type") @db.VarChar(20)
   fileSize         Int      @map("file_size")
   width            Int?
   height           Int?

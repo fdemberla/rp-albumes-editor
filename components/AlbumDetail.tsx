@@ -11,7 +11,7 @@ import type {
   UploadProgress,
   DownloadProgress,
 } from "@/types/electron";
-import { Upload, Image as ImageIcon, Check, ChevronLeft } from "lucide-react";
+import { Upload, Image as ImageIcon, Check, ChevronLeft, Play } from "lucide-react";
 import AlbumForm from "./AlbumForm";
 import AlbumPhotoEditor from "./AlbumPhotoEditor";
 import PhotoViewer from "./PhotoViewer";
@@ -264,7 +264,7 @@ export default function AlbumDetail({
             className="px-4 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center gap-1.5"
           >
             <Upload className="w-4 h-4" />
-            Subir Fotos
+            Subir Archivos
           </button>
           <button
             onClick={() => setIsEditing(true)}
@@ -384,16 +384,16 @@ export default function AlbumDetail({
           {currentAlbum.photos.length === 0 && !isUploading && (
             <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow">
               <p className="text-gray-500 dark:text-gray-400 text-lg">
-                Este álbum no tiene fotos todavía.
+                Este álbum no tiene fotos ni videos todavía.
               </p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 mb-4">
-                Hacé clic en &quot;Subir Fotos&quot; para agregar imágenes.
+                Hacé clic en &quot;Subir Archivos&quot; para agregar imágenes o videos.
               </p>
               <button
                 onClick={handleUploadPhotos}
                 className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 flex items-center gap-1.5 mx-auto"
               >
-                <Upload className="w-4 h-4" /> Subir Fotos
+                <Upload className="w-4 h-4" /> Subir Archivos
               </button>
             </div>
           )}
@@ -452,6 +452,14 @@ export default function AlbumDetail({
                         />
                       ) : (
                         <ImageIcon className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                      )}
+                      {/* Video play icon overlay */}
+                      {photo.mediaType === "video" && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+                            <Play className="w-5 h-5 text-white fill-white" />
+                          </div>
+                        </div>
                       )}
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
@@ -585,7 +593,7 @@ function UploadProgressBar({ progress }: { progress: UploadProgress | null }) {
 
       {progress.stage === "complete" && (
         <p className="text-xs text-green-600 dark:text-green-400">
-          Se subieron {progress.total} foto{progress.total !== 1 ? "s" : ""}{" "}
+          Se subieron {progress.total} archivo{progress.total !== 1 ? "s" : ""}{" "}
           exitosamente.
         </p>
       )}

@@ -121,6 +121,7 @@ export interface AlbumPhoto {
   storedFilename: string;
   storedPath: string;
   thumbnailPath: string | null;
+  mediaType: "photo" | "video";
   fileSize: number;
   width: number | null;
   height: number | null;
@@ -380,6 +381,7 @@ export interface ElectronAPI {
   getAlbumPhoto: (storedPath: string) => Promise<{
     success: boolean;
     data?: string;
+    mediaType?: "photo" | "video";
     error?: string;
   }>;
   getAlbumThumbnail: (thumbnailPath: string) => Promise<{

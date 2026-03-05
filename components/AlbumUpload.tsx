@@ -121,8 +121,8 @@ export default function AlbumUpload({ onClose }: AlbumUploadProps) {
       {/* Selected photos info */}
       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
         <p className="text-sm text-blue-700 dark:text-blue-300">
-          {selectedImagesList.length} foto
-          {selectedImagesList.length !== 1 ? "s" : ""} seleccionada
+          {selectedImagesList.length} archivo
+          {selectedImagesList.length !== 1 ? "s" : ""} seleccionado
           {selectedImagesList.length !== 1 ? "s" : ""} para subir
         </p>
       </div>
@@ -223,7 +223,7 @@ export default function AlbumUpload({ onClose }: AlbumUploadProps) {
             Subida completada
           </p>
           <p className="text-sm text-green-600 dark:text-green-500 mt-1">
-            {uploadSummary.uploaded} de {uploadSummary.total} fotos subidas
+            {uploadSummary.uploaded} de {uploadSummary.total} archivos subidos
             exitosamente
             {uploadSummary.failed > 0 && (
               <span className="text-red-500">
@@ -252,15 +252,15 @@ export default function AlbumUpload({ onClose }: AlbumUploadProps) {
         >
           {albumLoading
             ? "Subiendo..."
-            : `Comprimir y Subir ${selectedImagesList.length} Foto${selectedImagesList.length !== 1 ? "s" : ""}`}
+            : `Subir ${selectedImagesList.length} Archivo${selectedImagesList.length !== 1 ? "s" : ""}`}
         </button>
       )}
 
       {/* Info */}
       {!uploadComplete && (
         <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-          Las fotos serán comprimidas a JPEG (85-90% calidad) antes de subir. Se
-          generarán thumbnails automáticamente.
+          Las fotos serán comprimidas a JPEG antes de subir. Los videos .mp4 se
+          suben sin compresión. Se generarán thumbnails automáticamente.
         </p>
       )}
     </div>

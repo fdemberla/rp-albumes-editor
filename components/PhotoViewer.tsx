@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { AlbumPhoto } from "@/types/electron";
 import AlbumPhotoEditor from "./AlbumPhotoEditor";
 
@@ -23,6 +23,7 @@ export default function PhotoViewer({
 }: PhotoViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [imageData, setImageData] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"photo" | "video">("photo");
   const [loadingImage, setLoadingImage] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [direction, setDirection] = useState(0); // -1 = prev, 1 = next
@@ -54,7 +55,7 @@ export default function PhotoViewer({
     return () => { cancelled = true; };
   }, [photos]);
 
-  // Load full-resolution image
+  // Load full-resolution image or video
   const loadImage = useCallback(async () => {
     if (!photo?.storedPath || !window.electronAPI) return;
     setLoadingImage(true);
@@ -62,6 +63,7 @@ export default function PhotoViewer({
       const result = await window.electronAPI.getAlbumPhoto(photo.storedPath);
       if (result.success && result.data) {
         setImageData(result.data);
+        setMediaType(result.mediaType || (photo.mediaType === "video" ? "video" : "photo"));
       } else {
         setImageData(null);
       }
@@ -70,7 +72,7 @@ export default function PhotoViewer({
     } finally {
       setLoadingImage(false);
     }
-  }, [photo?.storedPath]);
+  }, [photo?.storedPath, photo?.mediaType]);
 
   useEffect(() => {
     loadImage();
@@ -82,6 +84,7 @@ export default function PhotoViewer({
       setDirection(index > currentIndex ? 1 : -1);
       setCurrentIndex(index);
       setImageData(null);
+      setMediaType("photo");
     },
     [currentIndex, photos.length],
   );
@@ -180,23 +183,42 @@ export default function PhotoViewer({
           {loadingImage ? (
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-white/50">Cargando imagen...</p>
+              <p className="text-sm text-white/50">
+                {photo.mediaType === "video" ? "Cargando video..." : "Cargando imagen..."}
+              </p>
             </div>
           ) : imageData ? (
             <AnimatePresence mode="wait" custom={direction}>
-              <motion.img
-                key={photo.id}
-                src={imageData}
-                alt={photo.title || photo.originalFilename}
-                className="max-w-full max-h-full object-contain select-none"
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                draggable={false}
-              />
+              {mediaType === "video" ? (
+                <motion.video
+                  key={photo.id}
+                  src={imageData}
+                  className="max-w-full max-h-full object-contain select-none"
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  controls
+                  autoPlay
+                  playsInline
+                />
+              ) : (
+                <motion.img
+                  key={photo.id}
+                  src={imageData}
+                  alt={photo.title || photo.originalFilename}
+                  className="max-w-full max-h-full object-contain select-none"
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  draggable={false}
+                />
+              )}
             </AnimatePresence>
           ) : null}
         </div>
@@ -227,11 +249,18 @@ export default function PhotoViewer({
                   }`}
                 >
                   {thumbnails[p.id] ? (
-                    <img
-                      src={thumbnails[p.id]}
-                      alt={p.originalFilename}
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="relative w-full h-full">
+                      <img
+                        src={thumbnails[p.id]}
+                        alt={p.originalFilename}
+                        className="w-full h-full object-cover"
+                      />
+                      {p.mediaType === "video" && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Play className="w-3 h-3 text-white fill-white drop-shadow" />
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="w-full h-full bg-gray-700 flex items-center justify-center">
                       <span className="text-[8px] text-gray-400">{i + 1}</span>
