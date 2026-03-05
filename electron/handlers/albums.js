@@ -479,14 +479,14 @@ function registerAlbumHandlers() {
               city: album.city || photoCity,
               state: album.state || photoState,
               country: album.country || photoCountry,
-              gpsLatitude:
-                metadata.location && metadata.location.gpsLatitude != null
-                  ? parseFloat(metadata.location.gpsLatitude)
-                  : null,
-              gpsLongitude:
-                metadata.location && metadata.location.gpsLongitude != null
-                  ? parseFloat(metadata.location.gpsLongitude)
-                  : null,
+              gpsLatitude: (() => {
+                const v = metadata.location && parseFloat(metadata.location.gpsLatitude);
+                return (v != null && !isNaN(v)) ? v : null;
+              })(),
+              gpsLongitude: (() => {
+                const v = metadata.location && parseFloat(metadata.location.gpsLongitude);
+                return (v != null && !isNaN(v)) ? v : null;
+              })(),
               cameraMake: (metadata.camera && metadata.camera.make) || null,
               cameraModel: (metadata.camera && metadata.camera.model) || null,
             },
