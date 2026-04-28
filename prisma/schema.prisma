@@ -59,6 +59,7 @@ model Album {
   state          String?  @db.VarChar(255)
   country        String?  @db.VarChar(255)
   keywords       String[] @default([])
+  colorTags      String[] @default([]) @map("color_tags")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -69,6 +70,7 @@ model Album {
   @@index([city, country])
   @@index([eventDate])
   @@index([keywords], type: Gin)
+  @@index([colorTags], type: Gin)
   @@map("albums")
 }
 
@@ -96,12 +98,14 @@ model Photo {
   gpsLongitude     Float?   @map("gps_longitude")
   cameraMake       String?  @map("camera_make") @db.VarChar(255)
   cameraModel      String?  @map("camera_model") @db.VarChar(255)
+  colorTags        String[] @default([]) @map("color_tags")
   createdAt        DateTime @default(now()) @map("created_at")
 
   album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
 
   @@index([albumId])
   @@index([keywords], type: Gin)
+  @@index([colorTags], type: Gin)
   @@index([artist])
   @@index([city, country])
   @@map("photos")

@@ -10,6 +10,7 @@ import type {
 } from "@/types/form";
 import { useAuthStore } from "@/lib/authStore";
 import FormularioGenerico from "./FormularioGenerico";
+import ColorTagSelector from "./ColorTagSelector";
 
 interface AlbumFormProps {
   album?: Album | null;
@@ -26,6 +27,7 @@ interface AlbumFormValues extends Record<string, unknown> {
   eventDate: string;
   location: LocationValue;
   keywords: string[];
+  colorTags: string[];
 }
 
 export default function AlbumForm({
@@ -60,6 +62,7 @@ export default function AlbumForm({
       gpsLongitude: "",
     },
     keywords: album?.keywords || [],
+    colorTags: album?.colorTags || [],
   };
 
   const fields: FieldDescriptor[] = [
@@ -107,6 +110,17 @@ export default function AlbumForm({
       type: "keywords",
       placeholder: "Escribe y presiona Enter",
     },
+    {
+      name: "colorTags",
+      label: "Etiquetas de Color",
+      type: "custom",
+      render: ({ value, onChange }) => (
+        <ColorTagSelector
+          value={(value as string[]) || []}
+          onChange={(tags) => onChange(tags)}
+        />
+      ),
+    },
   ];
 
   const handleSubmit = async (values: AlbumFormValues) => {
@@ -120,6 +134,7 @@ export default function AlbumForm({
       state: loc.state.trim() || undefined,
       country: loc.country.trim() || undefined,
       keywords: values.keywords,
+      colorTags: values.colorTags,
     };
 
     const result = await onSave(input);

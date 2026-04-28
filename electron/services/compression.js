@@ -23,7 +23,7 @@ async function compressPhoto(inputPath, options = {}) {
   const quality = options.quality || 88;
   const maxDimension = options.maxDimension || 4000;
 
-  let pipeline = sharp(inputPath).rotate(); // auto-rotate based on EXIF
+  let pipeline = sharp(inputPath).rotate().withMetadata(); // auto-rotate + preserve EXIF
 
   // Get original metadata to decide if resize is needed
   const metadata = await sharp(inputPath).metadata();
@@ -66,6 +66,7 @@ async function generateThumbnail(inputPath, options = {}) {
 
   const outputBuffer = await sharp(inputPath)
     .rotate() // auto-rotate based on EXIF
+    .withMetadata() // preserve EXIF
     .resize({
       width: thumbWidth,
       fit: "inside",
@@ -83,7 +84,17 @@ async function generateThumbnail(inputPath, options = {}) {
 }
 
 /** RAW image extensions supported by the app. */
-const RAW_EXTENSIONS = [".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".dng", ".raf", ".pef"];
+const RAW_EXTENSIONS = [
+  ".cr2",
+  ".cr3",
+  ".nef",
+  ".arw",
+  ".orf",
+  ".rw2",
+  ".dng",
+  ".raf",
+  ".pef",
+];
 
 /**
  * Check if a file is a video based on its extension.

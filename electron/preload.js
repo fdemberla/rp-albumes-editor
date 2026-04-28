@@ -78,6 +78,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getAlbumThumbnail: (thumbnailPath) =>
     ipcRenderer.invoke("album:getThumbnail", thumbnailPath),
 
+  // ─── Read EXIF from stored photo ─────────────────────────────────────────
+  readPhotoExif: (storedPath) =>
+    ipcRenderer.invoke("album:readPhotoExif", storedPath),
+
   // ─── Photo Metadata Editing ────────────────────────────────────────────
   updatePhotoMetadata: (albumId, photoIds, metadata) =>
     ipcRenderer.invoke(

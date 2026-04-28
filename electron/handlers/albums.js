@@ -1,6 +1,7 @@
 const { ipcMain, dialog, BrowserWindow } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const archiver = require("archiver");
@@ -14,9 +15,9 @@ let prisma = null;
  */
 function getPrisma() {
   if (!prisma) {
-    const adapter = new PrismaPg({
-      connectionString: process.env.DATABASE_URL,
-    });
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    pool.setMaxListeners(30);
+    const adapter = new PrismaPg(pool);
     prisma = new PrismaClient({ adapter });
   }
   return prisma;
@@ -86,6 +87,7 @@ function registerAlbumHandlers() {
         state: input.state || null,
         country: input.country || null,
         keywords: input.keywords || [],
+        colorTags: input.colorTags || [],
       };
       // Support both new FK and legacy text field
       if (input.photographerId) data.photographerId = input.photographerId;
@@ -159,6 +161,9 @@ function registerAlbumHandlers() {
         }
         if (filters.keywords && filters.keywords.length > 0) {
           where.keywords = { hasSome: filters.keywords };
+        }
+        if (filters.colorTags && filters.colorTags.length > 0) {
+          where.colorTags = { hasSome: filters.colorTags };
         }
       }
 
@@ -269,6 +274,7 @@ function registerAlbumHandlers() {
       if (input.state !== undefined) data.state = input.state;
       if (input.country !== undefined) data.country = input.country;
       if (input.keywords !== undefined) data.keywords = input.keywords;
+      if (input.colorTags !== undefined) data.colorTags = input.colorTags;
 
       const album = await db.album.update({
         where: { id: albumId },
@@ -344,11 +350,16 @@ function registerAlbumHandlers() {
           current: i + 1,
           total,
           fileName: path.basename(photo.filePath),
-          stage: (isVideo || isRaw) ? "uploading" : "compressing",
+          stage: isVideo || isRaw ? "uploading" : "compressing",
         });
 
         try {
-          let fileBuffer, fileSize, fileWidth, fileHeight, thumbnail, storedFilename;
+          let fileBuffer,
+            fileSize,
+            fileWidth,
+            fileHeight,
+            thumbnail,
+            storedFilename;
 
           if (isVideo) {
             // ── Video: read raw file (already compressed), generate thumbnail ──
@@ -358,7 +369,9 @@ function registerAlbumHandlers() {
             fileHeight = null;
 
             // Generate thumbnail from video frame
-            thumbnail = await compression.generateVideoThumbnail(photo.filePath);
+            thumbnail = await compression.generateVideoThumbnail(
+              photo.filePath,
+            );
 
             // Preserve .mp4 extension for videos
             storedFilename = makeStoredFilename(
@@ -448,6 +461,9 @@ function registerAlbumHandlers() {
             ...new Set([...albumKeywords, ...photoKeywords]),
           ];
 
+          // Inherit color tags from album
+          const mergedColorTags = [...(album.colorTags || [])];
+
           // Format album event date as string for dateCreated
           const albumDateStr = album.eventDate
             ? album.eventDate.toISOString().split("T")[0]
@@ -480,15 +496,20 @@ function registerAlbumHandlers() {
               state: album.state || photoState,
               country: album.country || photoCountry,
               gpsLatitude: (() => {
-                const v = metadata.location && parseFloat(metadata.location.gpsLatitude);
-                return (v != null && !isNaN(v)) ? v : null;
+                const v =
+                  metadata.location &&
+                  parseFloat(metadata.location.gpsLatitude);
+                return v != null && !isNaN(v) ? v : null;
               })(),
               gpsLongitude: (() => {
-                const v = metadata.location && parseFloat(metadata.location.gpsLongitude);
-                return (v != null && !isNaN(v)) ? v : null;
+                const v =
+                  metadata.location &&
+                  parseFloat(metadata.location.gpsLongitude);
+                return v != null && !isNaN(v) ? v : null;
               })(),
               cameraMake: (metadata.camera && metadata.camera.make) || null,
               cameraModel: (metadata.camera && metadata.camera.model) || null,
+              colorTags: mergedColorTags,
             },
           });
 
@@ -584,7 +605,17 @@ function registerAlbumHandlers() {
       const buffer = await storage.downloadFile(storedPath);
       const ext = path.extname(storedPath).toLowerCase();
       const isVideo = ext === ".mp4";
-      const rawExts = [".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".dng", ".raf", ".pef"];
+      const rawExts = [
+        ".cr2",
+        ".cr3",
+        ".nef",
+        ".arw",
+        ".orf",
+        ".rw2",
+        ".dng",
+        ".raf",
+        ".pef",
+      ];
       const isRaw = rawExts.includes(ext);
 
       if (isVideo) {
@@ -672,6 +703,8 @@ function registerAlbumHandlers() {
             metadata.gpsLongitude != null
               ? parseFloat(metadata.gpsLongitude)
               : null;
+        if (metadata.colorTags !== undefined)
+          data.colorTags = metadata.colorTags;
 
         // Update all specified photos that belong to this album
         const updated = await db.photo.updateMany({
@@ -724,7 +757,21 @@ function registerAlbumHandlers() {
             filters: [
               {
                 name: "Fotos y Videos",
-                extensions: ["jpg", "jpeg", "png", "cr2", "cr3", "nef", "arw", "orf", "rw2", "dng", "raf", "pef", "mp4"],
+                extensions: [
+                  "jpg",
+                  "jpeg",
+                  "png",
+                  "cr2",
+                  "cr3",
+                  "nef",
+                  "arw",
+                  "orf",
+                  "rw2",
+                  "dng",
+                  "raf",
+                  "pef",
+                  "mp4",
+                ],
               },
               { name: "Todos los archivos", extensions: ["*"] },
             ],
@@ -807,6 +854,73 @@ function registerAlbumHandlers() {
     } catch (err) {
       console.error("[Album] Error downloading photos:", err);
       return { success: false, error: err.message };
+    }
+  });
+
+  // ─── Read Photo EXIF from SFTP ─────────────────────────────────────────
+  ipcMain.handle("album:readPhotoExif", async (_event, storedPath) => {
+    const os = require("os");
+    const { exiftool } = require("exiftool-vendored");
+    const tmpPath = path.join(
+      os.tmpdir(),
+      `exif_${Date.now()}_${path.basename(storedPath)}`,
+    );
+    try {
+      const buffer = await storage.downloadFile(storedPath);
+      await fs.promises.writeFile(tmpPath, buffer);
+      const tags = await exiftool.read(tmpPath);
+
+      return {
+        success: true,
+        exif: {
+          // Camera
+          make: tags.Make || null,
+          model: tags.Model || null,
+          lensModel: tags.LensModel || tags.Lens || null,
+          lensInfo: tags.LensInfo || null,
+          software: tags.Software || null,
+          // Exposure
+          exposureTime:
+            tags.ExposureTime != null ? String(tags.ExposureTime) : null,
+          fNumber: tags.FNumber != null ? String(tags.FNumber) : null,
+          iso: tags.ISO != null ? Number(tags.ISO) : null,
+          exposureProgram: tags.ExposureProgram || null,
+          exposureMode: tags.ExposureMode || null,
+          exposureCompensation:
+            tags.ExposureCompensation != null
+              ? String(tags.ExposureCompensation)
+              : null,
+          meteringMode: tags.MeteringMode || null,
+          flash: tags.Flash || null,
+          focalLength:
+            tags.FocalLength != null ? String(tags.FocalLength) : null,
+          focalLengthIn35mm:
+            tags.FocalLengthIn35mmFormat != null
+              ? Number(tags.FocalLengthIn35mmFormat)
+              : null,
+          whiteBalance: tags.WhiteBalance || null,
+          // Image
+          imageWidth: tags.ImageWidth || tags.ExifImageWidth || null,
+          imageHeight: tags.ImageHeight || tags.ExifImageHeight || null,
+          orientation: tags.Orientation || null,
+          colorSpace: tags.ColorSpace || null,
+          // Dates
+          dateTimeOriginal: tags.DateTimeOriginal
+            ? String(tags.DateTimeOriginal)
+            : null,
+          createDate: tags.CreateDate ? String(tags.CreateDate) : null,
+          // GPS
+          gpsLatitude: tags.GPSLatitude != null ? tags.GPSLatitude : null,
+          gpsLongitude: tags.GPSLongitude != null ? tags.GPSLongitude : null,
+          gpsAltitude:
+            tags.GPSAltitude != null ? String(tags.GPSAltitude) : null,
+        },
+      };
+    } catch (err) {
+      console.error("[Album] Error reading EXIF:", err);
+      return { success: false, error: err.message };
+    } finally {
+      fs.promises.unlink(tmpPath).catch(() => {});
     }
   });
 }

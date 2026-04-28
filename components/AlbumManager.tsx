@@ -7,6 +7,7 @@ import type { AlbumFilter, AlbumCreateInput, Album } from "@/types/electron";
 import AlbumForm from "./AlbumForm";
 import AlbumDetail from "./AlbumDetail";
 import AlbumSearchPanel from "./AlbumSearchPanel";
+import { COLOR_TAGS } from "./ColorTagSelector";
 
 export default function AlbumManager() {
   const {
@@ -209,7 +210,23 @@ export default function AlbumManager() {
               }}
             >
               {/* Album Card — Fading Slideshow */}
-              <AlbumCardPreview album={album} />
+              <div className="relative">
+                <AlbumCardPreview album={album} />
+                {album.colorTags && album.colorTags.length > 0 && (
+                  <div className="absolute top-2 right-2 flex gap-1 bg-black/40 backdrop-blur-sm rounded-full px-1.5 py-1">
+                    {album.colorTags.map((tag) => {
+                      const ct = COLOR_TAGS.find((c) => c.value === tag);
+                      return ct ? (
+                        <span
+                          key={tag}
+                          title={ct.label}
+                          className={`w-3 h-3 rounded-full ${ct.bg} ring-1 ring-white/40`}
+                        />
+                      ) : null;
+                    })}
+                  </div>
+                )}
+              </div>
               <div className="p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                   {album.name}

@@ -15,6 +15,28 @@ import { Upload, Image as ImageIcon, Check, ChevronLeft, Play } from "lucide-rea
 import AlbumForm from "./AlbumForm";
 import AlbumPhotoEditor from "./AlbumPhotoEditor";
 import PhotoViewer from "./PhotoViewer";
+import { COLOR_TAGS } from "./ColorTagSelector";
+
+/** Inline chip display for color tags (read-only) */
+function ColorTagChips({ tags }: { tags: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {tags.map((tag) => {
+        const ct = COLOR_TAGS.find((c) => c.value === tag);
+        if (!ct) return null;
+        return (
+          <span
+            key={tag}
+            className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-full text-white font-medium ${ct.bg}`}
+          >
+            <span className="w-2 h-2 rounded-full bg-white/40 inline-block" />
+            {ct.label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 interface AlbumDetailProps {
   /** If true, opens with the upload flow active */
@@ -294,6 +316,11 @@ export default function AlbumDetail({
             </span>
           ))}
         </div>
+      )}
+
+      {/* Color Tags */}
+      {currentAlbum.colorTags && currentAlbum.colorTags.length > 0 && (
+        <ColorTagChips tags={currentAlbum.colorTags} />
       )}
 
       {/* Upload Progress Banner */}
