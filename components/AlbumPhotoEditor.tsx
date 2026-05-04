@@ -319,7 +319,23 @@ export default function AlbumPhotoEditor({
                     <ExifSection title="Cámara">
                       <ExifRow label="Marca" value={exifData.make} />
                       <ExifRow label="Modelo" value={exifData.model} />
+                      <ExifRow
+                        label="N° de serie"
+                        value={exifData.serialNumber}
+                      />
                       <ExifRow label="Lente" value={exifData.lensModel} />
+                      <ExifRow
+                        label="N° de serie lente"
+                        value={exifData.lensSerialNumber}
+                      />
+                      <ExifRow
+                        label="Disparos"
+                        value={
+                          exifData.shutterCount != null
+                            ? String(exifData.shutterCount)
+                            : null
+                        }
+                      />
                       <ExifRow label="Software" value={exifData.software} />
                     </ExifSection>
                   )}
@@ -371,6 +387,14 @@ export default function AlbumPhotoEditor({
                         value={exifData.whiteBalance}
                       />
                       <ExifRow label="Flash" value={exifData.flash} />
+                      <ExifRow
+                        label="Dist. sujeto"
+                        value={exifData.subjectDistance}
+                      />
+                      <ExifRow
+                        label="Tipo de escena"
+                        value={exifData.sceneCaptureType}
+                      />
                     </ExifSection>
                   )}
                   {/* Image */}
@@ -391,6 +415,14 @@ export default function AlbumPhotoEditor({
                       <ExifRow
                         label="Color space"
                         value={exifData.colorSpace}
+                      />
+                      <ExifRow
+                        label="Rating"
+                        value={
+                          exifData.rating != null
+                            ? String(exifData.rating)
+                            : null
+                        }
                       />
                     </ExifSection>
                   )}

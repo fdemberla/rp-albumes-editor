@@ -876,9 +876,17 @@ function registerAlbumHandlers() {
           // Camera
           make: tags.Make || null,
           model: tags.Model || null,
+          serialNumber:
+            tags.SerialNumber ||
+            tags.CameraSerialNumber ||
+            tags.BodySerialNumber ||
+            null,
           lensModel: tags.LensModel || tags.Lens || null,
           lensInfo: tags.LensInfo || null,
+          lensSerialNumber: tags.LensSerialNumber || null,
           software: tags.Software || null,
+          shutterCount:
+            tags.ShutterCount != null ? Number(tags.ShutterCount) : null,
           // Exposure
           exposureTime:
             tags.ExposureTime != null ? String(tags.ExposureTime) : null,
@@ -899,11 +907,18 @@ function registerAlbumHandlers() {
               ? Number(tags.FocalLengthIn35mmFormat)
               : null,
           whiteBalance: tags.WhiteBalance || null,
+          subjectDistance:
+            tags.SubjectDistance != null
+              ? String(tags.SubjectDistance)
+              : null,
+          sceneCaptureType: tags.SceneCaptureType || null,
           // Image
           imageWidth: tags.ImageWidth || tags.ExifImageWidth || null,
           imageHeight: tags.ImageHeight || tags.ExifImageHeight || null,
           orientation: tags.Orientation || null,
           colorSpace: tags.ColorSpace || null,
+          // Rating
+          rating: tags.Rating != null ? Number(tags.Rating) : null,
           // Dates
           dateTimeOriginal: tags.DateTimeOriginal
             ? String(tags.DateTimeOriginal)

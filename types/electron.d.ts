@@ -399,9 +399,12 @@ export interface ElectronAPI {
     exif?: {
       make: string | null;
       model: string | null;
+      serialNumber: string | null;
       lensModel: string | null;
       lensInfo: string | null;
+      lensSerialNumber: string | null;
       software: string | null;
+      shutterCount: number | null;
       exposureTime: string | null;
       fNumber: string | null;
       iso: number | null;
@@ -413,10 +416,13 @@ export interface ElectronAPI {
       focalLength: string | null;
       focalLengthIn35mm: number | null;
       whiteBalance: string | null;
+      subjectDistance: string | null;
+      sceneCaptureType: string | null;
       imageWidth: number | null;
       imageHeight: number | null;
       orientation: string | null;
       colorSpace: string | null;
+      rating: number | null;
       dateTimeOriginal: string | null;
       createDate: string | null;
       gpsLatitude: number | null;
