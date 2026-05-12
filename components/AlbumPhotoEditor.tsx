@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo } from "react";
 import { Check, Camera, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import type { AlbumPhoto, Fotografo } from "@/types/electron";
+import type { Album, AlbumPhoto, Fotografo } from "@/types/electron";
 import FotografoSelector from "./FotografoSelector";
 import type {
   FieldDescriptor,
@@ -51,6 +51,7 @@ function ArtistSelector({
 interface AlbumPhotoEditorProps {
   photos: AlbumPhoto[];
   albumId: string;
+  album?: Album;
   onSaved?: () => void;
 }
 
@@ -67,6 +68,7 @@ interface PhotoMetaValues extends Record<string, unknown> {
 export default function AlbumPhotoEditor({
   photos,
   albumId,
+  album,
   onSaved,
 }: AlbumPhotoEditorProps) {
   const isSingle = photos.length === 1;
@@ -109,16 +111,20 @@ export default function AlbumPhotoEditor({
   const defaultValues: PhotoMetaValues = useMemo(() => {
     if (isSingle && photo) {
       return {
-        title: photo.title || "",
-        description: photo.description || "",
+        title: photo.title || album?.name || "",
+        description: photo.description || album?.description || "",
         artist: photo.artist || "",
         copyright: photo.copyright || "",
-        keywords: photo.keywords || [],
-        colorTags: photo.colorTags || [],
+        keywords:
+          photo.keywords?.length > 0 ? photo.keywords : album?.keywords || [],
+        colorTags:
+          photo.colorTags?.length > 0
+            ? photo.colorTags
+            : album?.colorTags || [],
         location: {
-          city: photo.city || "",
-          state: photo.state || "",
-          country: photo.country || "",
+          city: photo.city || album?.city || "",
+          state: photo.state || album?.state || "",
+          country: photo.country || album?.country || "",
           gpsLatitude:
             photo.gpsLatitude != null ? String(photo.gpsLatitude) : "",
           gpsLongitude:
@@ -127,21 +133,21 @@ export default function AlbumPhotoEditor({
       };
     }
     return {
-      title: "",
-      description: "",
+      title: album?.name || "",
+      description: album?.description || "",
       artist: "",
       copyright: "",
-      keywords: [],
-      colorTags: [],
+      keywords: album?.keywords || [],
+      colorTags: album?.colorTags || [],
       location: {
-        city: "",
-        state: "",
-        country: "",
+        city: album?.city || "",
+        state: album?.state || "",
+        country: album?.country || "",
         gpsLatitude: "",
         gpsLongitude: "",
       },
     };
-  }, [photos, isSingle, photo]);
+  }, [isSingle, photo, album]);
 
   const fields: FieldDescriptor[] = [
     {

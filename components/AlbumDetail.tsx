@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useAlbumStore } from "@/lib/albumStore";
 import type {
+  Album,
   AlbumUpdateInput,
   AlbumPhoto,
   AlbumCreateInput,
@@ -11,7 +12,13 @@ import type {
   UploadProgress,
   DownloadProgress,
 } from "@/types/electron";
-import { Upload, Image as ImageIcon, Check, ChevronLeft, Play } from "lucide-react";
+import {
+  Upload,
+  Image as ImageIcon,
+  Check,
+  ChevronLeft,
+  Play,
+} from "lucide-react";
 import AlbumForm from "./AlbumForm";
 import AlbumPhotoEditor from "./AlbumPhotoEditor";
 import PhotoViewer from "./PhotoViewer";
@@ -414,7 +421,8 @@ export default function AlbumDetail({
                 Este álbum no tiene fotos ni videos todavía.
               </p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 mb-4">
-                Hacé clic en &quot;Subir Archivos&quot; para agregar imágenes o videos.
+                Hacé clic en &quot;Subir Archivos&quot; para agregar imágenes o
+                videos.
               </p>
               <button
                 onClick={handleUploadPhotos}
@@ -513,6 +521,7 @@ export default function AlbumDetail({
               <AlbumPhotoEditor
                 photos={selectedPhotoObjects}
                 albumId={currentAlbum.id}
+                album={currentAlbum as Album}
                 onSaved={() => {
                   // Refresh album to get updated metadata
                   fetchAlbum(currentAlbum.id);

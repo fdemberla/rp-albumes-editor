@@ -160,7 +160,34 @@ function registerAlbumHandlers() {
           if (filters.dateTo) where.eventDate.lte = new Date(filters.dateTo);
         }
         if (filters.keywords && filters.keywords.length > 0) {
-          where.keywords = { hasSome: filters.keywords };
+          // Partial / multi-word keyword search using ILIKE on unnested array elements.
+          // Each chip is split into words; ALL words of a chip must appear in the same
+          // stored keyword element (e.g. chip "jose mulino" matches "jose raul mulino").
+          // Multiple chips are AND-ed: every chip must match at least one keyword element.
+          const escapeLike = (s) =>
+            s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+
+          const params = [];
+          const chipConditions = [];
+
+          for (const chip of filters.keywords) {
+            const words = chip.trim().split(/\s+/).filter(Boolean);
+            if (words.length === 0) continue;
+            const wordConditions = words.map((word) => {
+              params.push(`%${escapeLike(word)}%`);
+              return `k ILIKE $${params.length}`;
+            });
+            chipConditions.push(
+              `EXISTS (SELECT 1 FROM unnest(a.keywords) AS k WHERE ${wordConditions.join(" AND ")})`,
+            );
+          }
+
+          if (chipConditions.length > 0) {
+            const sql = `SELECT id::text FROM albums a WHERE ${chipConditions.join(" AND ")}`;
+            const rows = await db.$queryRawUnsafe(sql, ...params);
+            const ids = rows.map((r) => r.id);
+            where.id = { in: ids };
+          }
         }
         if (filters.colorTags && filters.colorTags.length > 0) {
           where.colorTags = { hasSome: filters.colorTags };
@@ -480,8 +507,8 @@ function registerAlbumHandlers() {
               fileSize: fileSize,
               width: fileWidth,
               height: fileHeight,
-              title: metadata.title || null,
-              description: metadata.description || null,
+              title: metadata.title || album.name || null,
+              description: metadata.description || album.description || null,
               keywords: mergedKeywords,
               copyright: metadata.copyright || null,
               artist:
@@ -908,9 +935,7 @@ function registerAlbumHandlers() {
               : null,
           whiteBalance: tags.WhiteBalance || null,
           subjectDistance:
-            tags.SubjectDistance != null
-              ? String(tags.SubjectDistance)
-              : null,
+            tags.SubjectDistance != null ? String(tags.SubjectDistance) : null,
           sceneCaptureType: tags.SceneCaptureType || null,
           // Image
           imageWidth: tags.ImageWidth || tags.ExifImageWidth || null,
