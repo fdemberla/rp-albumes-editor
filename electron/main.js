@@ -13,10 +13,21 @@ const {
 
 // Resolve .env path: in production look next to the executable, in dev use project root
 const envPath = app.isPackaged
-  ? path.join(path.dirname(process.execPath), ".env")
+  ? path.join(process.resourcesPath, ".env")
   : path.join(__dirname, "..", ".env");
 
 require("dotenv").config({ path: envPath });
+
+// ADD THIS TEMPORARILY:
+console.log("=== ENV DEBUG ===");
+console.log("isPackaged:", app.isPackaged);
+console.log("resourcesPath:", process.resourcesPath);
+console.log("envPath:", envPath);
+console.log(
+  "AZURE_CLIENT_ID:",
+  process.env.AZURE_CLIENT_ID ? "SET" : "NOT SET",
+);
+console.log("=================");
 
 const fs = require("fs").promises;
 const url = require("url");
@@ -64,7 +75,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
-    icon: path.join(__dirname, "../public/icon.png"),
+    icon: path.join(__dirname, "../assets/icon.png"),
   });
 
   if (isDev) {
@@ -128,16 +139,21 @@ ipcMain.handle("dialog:openFiles", async () => {
     properties: ["openFile", "multiSelections"],
     filters: [
       {
-        name: "Images",
+        name: "Fotos y Videos",
         extensions: [
           "jpg",
           "jpeg",
           "png",
-          "gif",
-          "bmp",
-          "tiff",
-          "webp",
-          "heic",
+          "cr2",
+          "cr3",
+          "nef",
+          "arw",
+          "orf",
+          "rw2",
+          "dng",
+          "raf",
+          "pef",
+          "mp4",
         ],
       },
     ],
@@ -383,15 +399,39 @@ ipcMain.handle("file:bulkRename", async (event, renames) => {
 // Get image as base64 for preview
 ipcMain.handle("image:getPreview", async (event, filePath) => {
   try {
+    const ext = path.extname(filePath).toLowerCase();
+    const rawExts = [
+      ".cr2",
+      ".cr3",
+      ".nef",
+      ".arw",
+      ".orf",
+      ".rw2",
+      ".dng",
+      ".raf",
+      ".pef",
+    ];
+
+    if (rawExts.includes(ext)) {
+      // Convert RAW to JPEG for browser display via sharp
+      const sharp = require("sharp");
+      const jpegBuffer = await sharp(filePath)
+        .rotate()
+        .jpeg({ quality: 88 })
+        .toBuffer();
+      const base64 = jpegBuffer.toString("base64");
+      return {
+        success: true,
+        data: `data:image/jpeg;base64,${base64}`,
+      };
+    }
+
     const data = await fs.readFile(filePath);
     const base64 = data.toString("base64");
-    const ext = path.extname(filePath).toLowerCase();
     let mimeType = "image/jpeg";
 
     if (ext === ".png") mimeType = "image/png";
-    else if (ext === ".gif") mimeType = "image/gif";
-    else if (ext === ".webp") mimeType = "image/webp";
-    else if (ext === ".bmp") mimeType = "image/bmp";
+    else if (ext === ".mp4") mimeType = "video/mp4";
 
     return {
       success: true,
@@ -413,11 +453,16 @@ ipcMain.handle("folder:listImages", async (event, folderPath) => {
       ".jpg",
       ".jpeg",
       ".png",
-      ".gif",
-      ".bmp",
-      ".tiff",
-      ".webp",
-      ".heic",
+      ".cr2",
+      ".cr3",
+      ".nef",
+      ".arw",
+      ".orf",
+      ".rw2",
+      ".dng",
+      ".raf",
+      ".pef",
+      ".mp4",
     ];
 
     const imageFiles = files

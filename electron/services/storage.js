@@ -6,6 +6,7 @@ const posix = path.posix;
 
 let client = null;
 let isConnected = false;
+let connectingPromise = null; // Mutex: prevents concurrent reconnection attempts
 
 /**
  * Get SFTP configuration from environment variables.
@@ -56,31 +57,52 @@ function buildRemotePath(...segments) {
 
 /**
  * Connect to the SFTP server. Reuses existing connection if active.
+ * A mutex (connectingPromise) prevents concurrent reconnection races.
  */
 async function connect() {
-  if (isConnected && client) {
-    // Verify connection is still alive
-    try {
-      await client.list(getBasePath());
-      return;
-    } catch {
-      // Connection is dead, reconnect below
-      isConnected = false;
+  if (isConnected && client) return;
+
+  // If a connection attempt is already in progress, wait for it
+  if (connectingPromise) {
+    return connectingPromise;
+  }
+
+  connectingPromise = (async () => {
+    // Clean up any stale client
+    if (client) {
+      try { await client.end(); } catch {}
       client = null;
+      isConnected = false;
     }
-  }
 
-  const config = getConfig();
-  if (!config.host || !config.username) {
-    throw new Error(
-      "SFTP configuration missing. Check SFTP_HOST, SFTP_USER, SFTP_PASSWORD in .env",
-    );
-  }
+    const config = getConfig();
+    if (!config.host || !config.username) {
+      throw new Error(
+        "SFTP configuration missing. Check SFTP_HOST, SFTP_USER, SFTP_PASSWORD in .env",
+      );
+    }
 
-  client = new SftpClient();
-  await client.connect(config);
-  isConnected = true;
-  console.log(`[SFTP] Connected to ${config.host}:${config.port}`);
+    const newClient = new SftpClient();
+    await newClient.connect(config);
+
+    // Reset state automatically when the connection closes or errors
+    newClient.on("close", () => { isConnected = false; client = null; });
+    newClient.on("error", () => { isConnected = false; client = null; });
+
+    // Raise the listener limit on the underlying SSH2 Client to accommodate
+    // concurrent SFTP channel operations without spurious warnings
+    if (newClient.client) {
+      newClient.client.setMaxListeners(30);
+    }
+
+    client = newClient;
+    isConnected = true;
+    console.log(`[SFTP] Connected to ${config.host}:${config.port}`);
+  })().finally(() => {
+    connectingPromise = null;
+  });
+
+  return connectingPromise;
 }
 
 /**

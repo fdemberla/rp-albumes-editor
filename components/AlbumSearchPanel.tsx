@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { AlbumFilter, Fotografo } from "@/types/electron";
 import FotografoSelector from "./FotografoSelector";
+import ColorTagSelector, { COLOR_TAGS } from "./ColorTagSelector";
 
 interface AlbumSearchPanelProps {
   filters: AlbumFilter;
@@ -47,6 +48,7 @@ export default function AlbumSearchPanel({
     filters.dateFrom,
     filters.dateTo,
     filters.keywords && filters.keywords.length > 0 ? true : undefined,
+    filters.colorTags && filters.colorTags.length > 0 ? true : undefined,
     filters.sortBy && filters.sortBy !== "eventDate" ? true : undefined,
     filters.sortOrder && filters.sortOrder !== "desc" ? true : undefined,
     filters.pageSize && filters.pageSize !== 20 ? true : undefined,
@@ -116,7 +118,8 @@ export default function AlbumSearchPanel({
     filters.country ||
     filters.dateFrom ||
     filters.dateTo ||
-    (filters.keywords && filters.keywords.length > 0);
+    (filters.keywords && filters.keywords.length > 0) ||
+    (filters.colorTags && filters.colorTags.length > 0);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 space-y-3">
@@ -290,7 +293,21 @@ export default function AlbumSearchPanel({
                 </div>
               )}
 
-              {/* Row 3: Sort + Page size */}
+              {/* Row 3: Color tags */}
+              <div>
+                <label className={labelClass}>Etiquetas de Color</label>
+                <ColorTagSelector
+                  value={filters.colorTags || []}
+                  onChange={(tags) =>
+                    onFiltersChange({
+                      ...filters,
+                      colorTags: tags.length > 0 ? tags : undefined,
+                    })
+                  }
+                />
+              </div>
+
+              {/* Row 4: Sort + Page size */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className={labelClass}>Ordenar por</label>

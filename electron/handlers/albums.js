@@ -1,6 +1,7 @@
 const { ipcMain, dialog, BrowserWindow } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const archiver = require("archiver");
@@ -14,9 +15,9 @@ let prisma = null;
  */
 function getPrisma() {
   if (!prisma) {
-    const adapter = new PrismaPg({
-      connectionString: process.env.DATABASE_URL,
-    });
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    pool.setMaxListeners(30);
+    const adapter = new PrismaPg(pool);
     prisma = new PrismaClient({ adapter });
   }
   return prisma;
@@ -44,12 +45,13 @@ function sanitizeFilename(name) {
  * @param {number} index
  * @returns {string}
  */
-function makeStoredFilename(originalName, index) {
+function makeStoredFilename(originalName, index, preserveExtension = false) {
   const safe = sanitizeFilename(originalName);
   const ext = path.extname(safe) || ".jpg";
   const base = path.basename(safe, ext);
   const padded = String(index).padStart(4, "0");
-  return `${base}_${padded}${ext}`.toLowerCase().replace(/\s+/g, "_");
+  const finalExt = preserveExtension ? ext : ".jpg";
+  return `${base}_${padded}${finalExt}`.toLowerCase().replace(/\s+/g, "_");
 }
 
 /**
@@ -85,6 +87,7 @@ function registerAlbumHandlers() {
         state: input.state || null,
         country: input.country || null,
         keywords: input.keywords || [],
+        colorTags: input.colorTags || [],
       };
       // Support both new FK and legacy text field
       if (input.photographerId) data.photographerId = input.photographerId;
@@ -157,7 +160,37 @@ function registerAlbumHandlers() {
           if (filters.dateTo) where.eventDate.lte = new Date(filters.dateTo);
         }
         if (filters.keywords && filters.keywords.length > 0) {
-          where.keywords = { hasSome: filters.keywords };
+          // Partial / multi-word keyword search using ILIKE on unnested array elements.
+          // Each chip is split into words; ALL words of a chip must appear in the same
+          // stored keyword element (e.g. chip "jose mulino" matches "jose raul mulino").
+          // Multiple chips are AND-ed: every chip must match at least one keyword element.
+          const escapeLike = (s) =>
+            s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+
+          const params = [];
+          const chipConditions = [];
+
+          for (const chip of filters.keywords) {
+            const words = chip.trim().split(/\s+/).filter(Boolean);
+            if (words.length === 0) continue;
+            const wordConditions = words.map((word) => {
+              params.push(`%${escapeLike(word)}%`);
+              return `k ILIKE $${params.length}`;
+            });
+            chipConditions.push(
+              `EXISTS (SELECT 1 FROM unnest(a.keywords) AS k WHERE ${wordConditions.join(" AND ")})`,
+            );
+          }
+
+          if (chipConditions.length > 0) {
+            const sql = `SELECT id::text FROM albums a WHERE ${chipConditions.join(" AND ")}`;
+            const rows = await db.$queryRawUnsafe(sql, ...params);
+            const ids = rows.map((r) => r.id);
+            where.id = { in: ids };
+          }
+        }
+        if (filters.colorTags && filters.colorTags.length > 0) {
+          where.colorTags = { hasSome: filters.colorTags };
         }
       }
 
@@ -268,6 +301,7 @@ function registerAlbumHandlers() {
       if (input.state !== undefined) data.state = input.state;
       if (input.country !== undefined) data.country = input.country;
       if (input.keywords !== undefined) data.keywords = input.keywords;
+      if (input.colorTags !== undefined) data.colorTags = input.colorTags;
 
       const album = await db.album.update({
         where: { id: albumId },
@@ -335,31 +369,85 @@ function registerAlbumHandlers() {
 
       for (let i = 0; i < total; i++) {
         const photo = photos[i];
+        const isVideo = compression.isVideoFile(photo.filePath);
+        const isRaw = compression.isRawFile(photo.filePath);
 
         // Send progress to renderer
         event.sender.send("album:uploadProgress", {
           current: i + 1,
           total,
           fileName: path.basename(photo.filePath),
-          stage: "compressing",
+          stage: isVideo || isRaw ? "uploading" : "compressing",
         });
 
         try {
-          // 1. Compress the photo
-          const compressed = await compression.compressPhoto(photo.filePath);
+          let fileBuffer,
+            fileSize,
+            fileWidth,
+            fileHeight,
+            thumbnail,
+            storedFilename;
 
-          // 2. Generate thumbnail
-          const thumbnail = await compression.generateThumbnail(photo.filePath);
+          if (isVideo) {
+            // ── Video: read raw file (already compressed), generate thumbnail ──
+            fileBuffer = await fs.promises.readFile(photo.filePath);
+            fileSize = fileBuffer.length;
+            fileWidth = null;
+            fileHeight = null;
 
-          // 3. Build stored filename
-          const storedFilename = makeStoredFilename(
-            path.basename(photo.filePath),
-            i + 1,
-          );
-          // Force .jpg extension since we're converting to JPEG
-          const jpgFilename = storedFilename.replace(/\.[^.]+$/, ".jpg");
+            // Generate thumbnail from video frame
+            thumbnail = await compression.generateVideoThumbnail(
+              photo.filePath,
+            );
 
-          // 4. Upload compressed photo to SFTP
+            // Preserve .mp4 extension for videos
+            storedFilename = makeStoredFilename(
+              path.basename(photo.filePath),
+              i + 1,
+              true, // preserveExtension
+            );
+          } else if (isRaw) {
+            // ── RAW photo: upload as-is (no compression), generate thumbnail ──
+            fileBuffer = await fs.promises.readFile(photo.filePath);
+            fileSize = fileBuffer.length;
+
+            // Get dimensions from RAW via sharp metadata
+            try {
+              const rawMeta = await require("sharp")(photo.filePath).metadata();
+              fileWidth = rawMeta.width || null;
+              fileHeight = rawMeta.height || null;
+            } catch {
+              fileWidth = null;
+              fileHeight = null;
+            }
+
+            // Generate thumbnail (sharp can read most RAW formats via libvips)
+            thumbnail = await compression.generateThumbnail(photo.filePath);
+
+            // Preserve original RAW extension
+            storedFilename = makeStoredFilename(
+              path.basename(photo.filePath),
+              i + 1,
+              true, // preserveExtension
+            );
+          } else {
+            // ── JPEG/PNG photo: compress and generate thumbnail ──
+            const compressed = await compression.compressPhoto(photo.filePath);
+            fileBuffer = compressed.buffer;
+            fileSize = compressed.size;
+            fileWidth = compressed.width;
+            fileHeight = compressed.height;
+
+            thumbnail = await compression.generateThumbnail(photo.filePath);
+
+            // Force .jpg extension since we're converting to JPEG
+            storedFilename = makeStoredFilename(
+              path.basename(photo.filePath),
+              i + 1,
+            ).replace(/\.[^.]+$/, ".jpg");
+          }
+
+          // Upload file to SFTP
           event.sender.send("album:uploadProgress", {
             current: i + 1,
             total,
@@ -369,20 +457,21 @@ function registerAlbumHandlers() {
 
           const storedPath = await storage.uploadPhoto(
             albumId,
-            jpgFilename,
-            compressed.buffer,
+            storedFilename,
+            fileBuffer,
             album.eventDate,
           );
 
-          // 5. Upload thumbnail to SFTP
+          // Upload thumbnail to SFTP (thumbnails are always .jpg)
+          const thumbFilename = storedFilename.replace(/\.[^.]+$/, ".jpg");
           const thumbnailPath = await storage.uploadThumbnail(
             albumId,
-            jpgFilename,
+            thumbFilename,
             thumbnail.buffer,
             album.eventDate,
           );
 
-          // 6. Save record in PostgreSQL
+          // Save record in PostgreSQL
           //    Inherit metadata from album (album fields always override)
           const metadata = photo.metadata || {};
           const photoCity =
@@ -399,6 +488,9 @@ function registerAlbumHandlers() {
             ...new Set([...albumKeywords, ...photoKeywords]),
           ];
 
+          // Inherit color tags from album
+          const mergedColorTags = [...(album.colorTags || [])];
+
           // Format album event date as string for dateCreated
           const albumDateStr = album.eventDate
             ? album.eventDate.toISOString().split("T")[0]
@@ -408,14 +500,15 @@ function registerAlbumHandlers() {
             data: {
               albumId: albumId,
               originalFilename: path.basename(photo.filePath),
-              storedFilename: jpgFilename,
+              storedFilename: storedFilename,
               storedPath: storedPath,
               thumbnailPath: thumbnailPath,
-              fileSize: compressed.size,
-              width: compressed.width,
-              height: compressed.height,
-              title: metadata.title || null,
-              description: metadata.description || null,
+              mediaType: isVideo ? "video" : "photo",
+              fileSize: fileSize,
+              width: fileWidth,
+              height: fileHeight,
+              title: metadata.title || album.name || null,
+              description: metadata.description || album.description || null,
               keywords: mergedKeywords,
               copyright: metadata.copyright || null,
               artist:
@@ -429,16 +522,21 @@ function registerAlbumHandlers() {
               city: album.city || photoCity,
               state: album.state || photoState,
               country: album.country || photoCountry,
-              gpsLatitude:
-                metadata.location && metadata.location.gpsLatitude != null
-                  ? parseFloat(metadata.location.gpsLatitude)
-                  : null,
-              gpsLongitude:
-                metadata.location && metadata.location.gpsLongitude != null
-                  ? parseFloat(metadata.location.gpsLongitude)
-                  : null,
+              gpsLatitude: (() => {
+                const v =
+                  metadata.location &&
+                  parseFloat(metadata.location.gpsLatitude);
+                return v != null && !isNaN(v) ? v : null;
+              })(),
+              gpsLongitude: (() => {
+                const v =
+                  metadata.location &&
+                  parseFloat(metadata.location.gpsLongitude);
+                return v != null && !isNaN(v) ? v : null;
+              })(),
               cameraMake: (metadata.camera && metadata.camera.make) || null,
               cameraModel: (metadata.camera && metadata.camera.model) || null,
+              colorTags: mergedColorTags,
             },
           });
 
@@ -447,11 +545,11 @@ function registerAlbumHandlers() {
             originalFile: photo.filePath,
             photoId: dbPhoto.id,
             storedPath,
-            compressedSize: compressed.size,
+            compressedSize: fileSize,
           });
         } catch (photoErr) {
           console.error(
-            `[Album] Error processing photo ${i + 1}:`,
+            `[Album] Error processing ${isVideo ? "video" : "photo"} ${i + 1}:`,
             photoErr.message,
           );
           results.push({
@@ -528,14 +626,57 @@ function registerAlbumHandlers() {
     }
   });
 
-  // ─── Get Photo (full compressed version as base64) ─────────────────────
+  // ─── Get Photo (full version as base64) ─────────────────────────────────
   ipcMain.handle("album:getPhoto", async (_event, storedPath) => {
     try {
       const buffer = await storage.downloadFile(storedPath);
+      const ext = path.extname(storedPath).toLowerCase();
+      const isVideo = ext === ".mp4";
+      const rawExts = [
+        ".cr2",
+        ".cr3",
+        ".nef",
+        ".arw",
+        ".orf",
+        ".rw2",
+        ".dng",
+        ".raf",
+        ".pef",
+      ];
+      const isRaw = rawExts.includes(ext);
+
+      if (isVideo) {
+        const base64 = buffer.toString("base64");
+        return {
+          success: true,
+          data: `data:video/mp4;base64,${base64}`,
+          mediaType: "video",
+        };
+      }
+
+      if (isRaw) {
+        // Convert RAW to JPEG for browser display via sharp
+        const sharp = require("sharp");
+        const jpegBuffer = await sharp(buffer)
+          .rotate()
+          .jpeg({ quality: 92 })
+          .toBuffer();
+        const base64 = jpegBuffer.toString("base64");
+        return {
+          success: true,
+          data: `data:image/jpeg;base64,${base64}`,
+          mediaType: "photo",
+        };
+      }
+
+      // JPEG / PNG
+      let mimeType = "image/jpeg";
+      if (ext === ".png") mimeType = "image/png";
       const base64 = buffer.toString("base64");
       return {
         success: true,
-        data: `data:image/jpeg;base64,${base64}`,
+        data: `data:${mimeType};base64,${base64}`,
+        mediaType: "photo",
       };
     } catch (err) {
       return { success: false, error: err.message };
@@ -589,6 +730,8 @@ function registerAlbumHandlers() {
             metadata.gpsLongitude != null
               ? parseFloat(metadata.gpsLongitude)
               : null;
+        if (metadata.colorTags !== undefined)
+          data.colorTags = metadata.colorTags;
 
         // Update all specified photos that belong to this album
         const updated = await db.photo.updateMany({
@@ -640,8 +783,22 @@ function registerAlbumHandlers() {
             defaultPath: defaultName,
             filters: [
               {
-                name: "Imágenes",
-                extensions: ["jpg", "jpeg", "png", "webp", "tiff"],
+                name: "Fotos y Videos",
+                extensions: [
+                  "jpg",
+                  "jpeg",
+                  "png",
+                  "cr2",
+                  "cr3",
+                  "nef",
+                  "arw",
+                  "orf",
+                  "rw2",
+                  "dng",
+                  "raf",
+                  "pef",
+                  "mp4",
+                ],
               },
               { name: "Todos los archivos", extensions: ["*"] },
             ],
@@ -724,6 +881,86 @@ function registerAlbumHandlers() {
     } catch (err) {
       console.error("[Album] Error downloading photos:", err);
       return { success: false, error: err.message };
+    }
+  });
+
+  // ─── Read Photo EXIF from SFTP ─────────────────────────────────────────
+  ipcMain.handle("album:readPhotoExif", async (_event, storedPath) => {
+    const os = require("os");
+    const { exiftool } = require("exiftool-vendored");
+    const tmpPath = path.join(
+      os.tmpdir(),
+      `exif_${Date.now()}_${path.basename(storedPath)}`,
+    );
+    try {
+      const buffer = await storage.downloadFile(storedPath);
+      await fs.promises.writeFile(tmpPath, buffer);
+      const tags = await exiftool.read(tmpPath);
+
+      return {
+        success: true,
+        exif: {
+          // Camera
+          make: tags.Make || null,
+          model: tags.Model || null,
+          serialNumber:
+            tags.SerialNumber ||
+            tags.CameraSerialNumber ||
+            tags.BodySerialNumber ||
+            null,
+          lensModel: tags.LensModel || tags.Lens || null,
+          lensInfo: tags.LensInfo || null,
+          lensSerialNumber: tags.LensSerialNumber || null,
+          software: tags.Software || null,
+          shutterCount:
+            tags.ShutterCount != null ? Number(tags.ShutterCount) : null,
+          // Exposure
+          exposureTime:
+            tags.ExposureTime != null ? String(tags.ExposureTime) : null,
+          fNumber: tags.FNumber != null ? String(tags.FNumber) : null,
+          iso: tags.ISO != null ? Number(tags.ISO) : null,
+          exposureProgram: tags.ExposureProgram || null,
+          exposureMode: tags.ExposureMode || null,
+          exposureCompensation:
+            tags.ExposureCompensation != null
+              ? String(tags.ExposureCompensation)
+              : null,
+          meteringMode: tags.MeteringMode || null,
+          flash: tags.Flash || null,
+          focalLength:
+            tags.FocalLength != null ? String(tags.FocalLength) : null,
+          focalLengthIn35mm:
+            tags.FocalLengthIn35mmFormat != null
+              ? Number(tags.FocalLengthIn35mmFormat)
+              : null,
+          whiteBalance: tags.WhiteBalance || null,
+          subjectDistance:
+            tags.SubjectDistance != null ? String(tags.SubjectDistance) : null,
+          sceneCaptureType: tags.SceneCaptureType || null,
+          // Image
+          imageWidth: tags.ImageWidth || tags.ExifImageWidth || null,
+          imageHeight: tags.ImageHeight || tags.ExifImageHeight || null,
+          orientation: tags.Orientation || null,
+          colorSpace: tags.ColorSpace || null,
+          // Rating
+          rating: tags.Rating != null ? Number(tags.Rating) : null,
+          // Dates
+          dateTimeOriginal: tags.DateTimeOriginal
+            ? String(tags.DateTimeOriginal)
+            : null,
+          createDate: tags.CreateDate ? String(tags.CreateDate) : null,
+          // GPS
+          gpsLatitude: tags.GPSLatitude != null ? tags.GPSLatitude : null,
+          gpsLongitude: tags.GPSLongitude != null ? tags.GPSLongitude : null,
+          gpsAltitude:
+            tags.GPSAltitude != null ? String(tags.GPSAltitude) : null,
+        },
+      };
+    } catch (err) {
+      console.error("[Album] Error reading EXIF:", err);
+      return { success: false, error: err.message };
+    } finally {
+      fs.promises.unlink(tmpPath).catch(() => {});
     }
   });
 }

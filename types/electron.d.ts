@@ -108,6 +108,7 @@ export interface Album {
   state: string | null;
   country: string | null;
   keywords: string[];
+  colorTags: string[];
   createdAt: string;
   updatedAt: string;
   photoCount: number;
@@ -121,6 +122,7 @@ export interface AlbumPhoto {
   storedFilename: string;
   storedPath: string;
   thumbnailPath: string | null;
+  mediaType: "photo" | "video";
   fileSize: number;
   width: number | null;
   height: number | null;
@@ -137,6 +139,7 @@ export interface AlbumPhoto {
   gpsLongitude: number | null;
   cameraMake: string | null;
   cameraModel: string | null;
+  colorTags: string[];
   createdAt: string;
 }
 
@@ -150,6 +153,7 @@ export interface AlbumCreateInput {
   state?: string;
   country?: string;
   keywords?: string[];
+  colorTags?: string[];
 }
 
 export type AlbumUpdateInput = Partial<AlbumCreateInput>;
@@ -164,6 +168,7 @@ export interface AlbumFilter {
   dateFrom?: string; // ISO date string
   dateTo?: string; // ISO date string
   keywords?: string[];
+  colorTags?: string[];
   sortBy?: "eventDate" | "name" | "createdAt";
   sortOrder?: "asc" | "desc";
   page?: number;
@@ -380,6 +385,7 @@ export interface ElectronAPI {
   getAlbumPhoto: (storedPath: string) => Promise<{
     success: boolean;
     data?: string;
+    mediaType?: "photo" | "video";
     error?: string;
   }>;
   getAlbumThumbnail: (thumbnailPath: string) => Promise<{
@@ -387,7 +393,44 @@ export interface ElectronAPI {
     data?: string;
     error?: string;
   }>;
-
+  // ─── Read EXIF from stored photo ─────────────────────────────────────────
+  readPhotoExif: (storedPath: string) => Promise<{
+    success: boolean;
+    exif?: {
+      make: string | null;
+      model: string | null;
+      serialNumber: string | null;
+      lensModel: string | null;
+      lensInfo: string | null;
+      lensSerialNumber: string | null;
+      software: string | null;
+      shutterCount: number | null;
+      exposureTime: string | null;
+      fNumber: string | null;
+      iso: number | null;
+      exposureProgram: string | null;
+      exposureMode: string | null;
+      exposureCompensation: string | null;
+      meteringMode: string | null;
+      flash: string | null;
+      focalLength: string | null;
+      focalLengthIn35mm: number | null;
+      whiteBalance: string | null;
+      subjectDistance: string | null;
+      sceneCaptureType: string | null;
+      imageWidth: number | null;
+      imageHeight: number | null;
+      orientation: string | null;
+      colorSpace: string | null;
+      rating: number | null;
+      dateTimeOriginal: string | null;
+      createDate: string | null;
+      gpsLatitude: number | null;
+      gpsLongitude: number | null;
+      gpsAltitude: string | null;
+    };
+    error?: string;
+  }>;
   // ─── Photo Metadata Editing ────────────────────────────────────────
   updatePhotoMetadata: (
     albumId: string,
