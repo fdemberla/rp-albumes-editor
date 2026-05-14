@@ -13,10 +13,21 @@ const {
 
 // Resolve .env path: in production look next to the executable, in dev use project root
 const envPath = app.isPackaged
-  ? path.join(path.dirname(process.execPath), ".env")
+  ? path.join(process.resourcesPath, ".env")
   : path.join(__dirname, "..", ".env");
 
 require("dotenv").config({ path: envPath });
+
+// ADD THIS TEMPORARILY:
+console.log("=== ENV DEBUG ===");
+console.log("isPackaged:", app.isPackaged);
+console.log("resourcesPath:", process.resourcesPath);
+console.log("envPath:", envPath);
+console.log(
+  "AZURE_CLIENT_ID:",
+  process.env.AZURE_CLIENT_ID ? "SET" : "NOT SET",
+);
+console.log("=================");
 
 const fs = require("fs").promises;
 const url = require("url");
@@ -64,7 +75,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
-    icon: path.join(__dirname, "../public/icon.png"),
+    icon: path.join(__dirname, "../assets/icon.png"),
   });
 
   if (isDev) {
@@ -389,7 +400,17 @@ ipcMain.handle("file:bulkRename", async (event, renames) => {
 ipcMain.handle("image:getPreview", async (event, filePath) => {
   try {
     const ext = path.extname(filePath).toLowerCase();
-    const rawExts = [".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".dng", ".raf", ".pef"];
+    const rawExts = [
+      ".cr2",
+      ".cr3",
+      ".nef",
+      ".arw",
+      ".orf",
+      ".rw2",
+      ".dng",
+      ".raf",
+      ".pef",
+    ];
 
     if (rawExts.includes(ext)) {
       // Convert RAW to JPEG for browser display via sharp

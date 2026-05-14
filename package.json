@@ -1,8 +1,10 @@
 {
   "name": "editor-metadatos",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "main": "electron/main.js",
+  "author": "fdemberla",
+  "description": "Editor de metadatos para álbumes de fotos",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
@@ -13,7 +15,8 @@
     "electron:build": "npx prisma generate && next build && electron-builder",
     "electron:build:win": "npx prisma generate && next build && electron-builder --win",
     "electron:build:mac": "npx prisma generate && next build && electron-builder --mac",
-    "electron:build:linux": "npx prisma generate && next build && electron-builder --linux"
+    "electron:build:linux": "npx prisma generate && next build && electron-builder --linux",
+    "build-icons": "electron-icon-builder --input=assets/icon.png --output=assets"
   },
   "build": {
     "appId": "com.editormetadatos.app",
@@ -26,6 +29,9 @@
       "prisma/**/*",
       "out/**/*",
       "package.json",
+      "!**/node_modules/@ffmpeg-installer/darwin-x64/**",
+      "!**/node_modules/@ffmpeg-installer/win32-x64/**",
+      "!**/node_modules/@ffmpeg-installer/linux-x64/**",
       "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,changelog.md,LICENSE,license,License}",
       "!**/node_modules/*/{test,tests,__tests__,powered-test,docs,doc,documentation,example,examples}/**",
       "!**/node_modules/.cache/**",
@@ -46,7 +52,7 @@
     "extraResources": [
       {
         "from": ".env",
-        "to": "../.env"
+        "to": ".env"
       },
       {
         "from": "node_modules/.prisma",
@@ -96,6 +102,14 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "node_modules/@ffmpeg-installer/ffmpeg",
+        "to": "node_modules/@ffmpeg-installer/ffmpeg"
+      },
+      {
+        "from": "node_modules/@ffmpeg-installer/darwin-arm64",
+        "to": "node_modules/@ffmpeg-installer/darwin-arm64"
       }
     ],
     "asarUnpack": [
@@ -109,26 +123,27 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/icon.ico"
+      "icon": "assets/icons/win/icon.ico"
     },
     "mac": {
       "target": [
         "dmg",
         "zip"
       ],
-      "icon": "public/icon.icns"
+      "icon": "assets/icons/mac/icon.icns"
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "icon": "public/icon.png",
+      "icon": "assets/icon.png",
       "category": "Graphics"
     }
   },
   "dependencies": {
     "@azure/msal-node": "^5.0.5",
+    "@ffmpeg-installer/darwin-arm64": "^4.1.5",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
@@ -142,6 +157,8 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@ffmpeg-installer/darwin-x64": "^4.1.0",
+    "@ffmpeg-installer/win32-x64": "^4.1.0",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-form": "^1.28.3",
     "@types/node": "^20",
@@ -152,6 +169,7 @@
     "cross-env": "^10.1.0",
     "electron": "^38.2.1",
     "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "lucide-react": "^0.575.0",
