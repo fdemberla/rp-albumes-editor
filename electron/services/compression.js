@@ -1,10 +1,12 @@
 const sharp = require("sharp");
 const ffmpeg = require("fluent-ffmpeg");
-const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
+const ffmpegStatic = require("ffmpeg-static");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
 
+// In packaged Electron apps the binary lives in app.asar.unpacked, not inside the asar archive
+const ffmpegPath = ffmpegStatic.replace("app.asar", "app.asar.unpacked");
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 /**
