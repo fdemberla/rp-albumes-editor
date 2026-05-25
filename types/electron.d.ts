@@ -382,19 +382,28 @@ export interface ElectronAPI {
     albumId: string,
     photoIds: string[],
   ) => Promise<{ success: boolean; deletedCount?: number; error?: string }>;
-  getAlbumPhoto: (albumId: string, photoId: string) => Promise<{
+  getAlbumPhoto: (
+    albumId: string,
+    photoId: string,
+  ) => Promise<{
     success: boolean;
     data?: string;
     mediaType?: "photo" | "video";
     error?: string;
   }>;
-  getAlbumThumbnail: (albumId: string, photoId: string) => Promise<{
+  getAlbumThumbnail: (
+    albumId: string,
+    photoId: string,
+  ) => Promise<{
     success: boolean;
     data?: string;
     error?: string;
   }>;
   // ─── Read EXIF from stored photo ─────────────────────────────────────────
-  readPhotoExif: (albumId: string, photoId: string) => Promise<{
+  readPhotoExif: (
+    albumId: string,
+    photoId: string,
+  ) => Promise<{
     success: boolean;
     exif?: {
       make: string | null;

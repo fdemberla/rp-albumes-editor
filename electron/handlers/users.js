@@ -124,7 +124,8 @@ function registerUserHandlers(getPrismaFn) {
         data.firstName = input.firstName.trim();
       if (input.lastName !== undefined) data.lastName = input.lastName.trim();
       if (input.email !== undefined) data.email = input.email.toLowerCase();
-      if (input.role !== undefined) data.role = input.role === "ADMIN" ? "ADMIN" : "USER";
+      if (input.role !== undefined)
+        data.role = input.role === "ADMIN" ? "ADMIN" : "USER";
 
       const user = await db.user.update({
         where: { id: userId },

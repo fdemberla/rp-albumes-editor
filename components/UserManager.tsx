@@ -173,7 +173,7 @@ function UsersPanel({ currentUser }: { currentUser: User }) {
             setEditingUser(null);
             setShowForm(true);
           }}
-          className="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          className="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
         >
           + Agregar Usuario
         </button>
@@ -192,7 +192,7 @@ function UsersPanel({ currentUser }: { currentUser: User }) {
 
       {loading ? (
         <div className="text-center py-8">
-          <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -449,7 +449,7 @@ function FotografosPanel() {
             setEditingFotografo(null);
             setShowForm(true);
           }}
-          className="px-4 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 whitespace-nowrap"
+          className="px-4 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 whitespace-nowrap transition-colors"
         >
           + Agregar Fotógrafo
         </button>
@@ -468,7 +468,7 @@ function FotografosPanel() {
 
       {loading ? (
         <div className="text-center py-8">
-          <div className="inline-block w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+          <div className="inline-block w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
         </div>
       ) : fotografos.length === 0 ? (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo } from "react";
-import { Check, Camera, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Check, AlertCircle, Camera, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import type { Album, AlbumPhoto, Fotografo } from "@/types/electron";
 import FotografoSelector from "./FotografoSelector";
 import type {
@@ -76,6 +76,7 @@ export default function AlbumPhotoEditor({
 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const formRef = useRef<FormularioGenericoHandle<PhotoMetaValues>>(null);
 
   // EXIF reader state (single photo only)
@@ -93,11 +94,12 @@ export default function AlbumPhotoEditor({
     setExifError(null);
     setExifOpen(true);
     try {
-      const result = await window.electronAPI.readPhotoExif(photo.albumId, photo.id);
+      const result = await window.electronAPI.readPhotoExif(
+        photo.albumId,
+        photo.id,
+      );
       if (result.success && result.exif) {
         setExifData(result.exif);
-
-        console.log("EXIF data read successfully:", result.exif);
       } else {
         setExifError(result.error ?? "No se pudo leer el EXIF");
       }
@@ -208,6 +210,7 @@ export default function AlbumPhotoEditor({
 
     setSaving(true);
     setSaveSuccess(false);
+    setSaveError(null);
 
     try {
       const metadata: Record<string, unknown> = {};
@@ -238,9 +241,12 @@ export default function AlbumPhotoEditor({
         setSaveSuccess(true);
         onSaved?.();
         setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setSaveError(result.error ?? "Error al guardar los metadatos");
       }
     } catch (err) {
       console.error("Error saving photo metadata:", err);
+      setSaveError(err instanceof Error ? err.message : "Error al guardar los metadatos");
     } finally {
       setSaving(false);
     }
@@ -270,18 +276,24 @@ export default function AlbumPhotoEditor({
         hideButtons
       />
 
-      {/* Save button + success toast */}
+      {/* Save button + feedback */}
       <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
         {saveSuccess && (
-          <p className="text-xs text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
-            <Check className="w-3 h-3" /> Metadatos guardados exitosamente
+          <p role="status" className="text-xs text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
+            <Check className="w-3 h-3 shrink-0" /> Metadatos guardados exitosamente
+          </p>
+        )}
+        {saveError && (
+          <p role="alert" className="text-xs text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 shrink-0" /> {saveError}
           </p>
         )}
         <button
           onClick={() => formRef.current?.submit()}
           disabled={saving}
-          className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
+          {saving && <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" />}
           {saving
             ? "Guardando..."
             : isSingle
@@ -300,7 +312,7 @@ export default function AlbumPhotoEditor({
           >
             <span className="flex items-center gap-1.5">
               {exifLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" />
               ) : (
                 <Camera className="w-3.5 h-3.5" />
               )}
@@ -486,7 +498,7 @@ function ExifSection({
 }) {
   return (
     <div>
-      <p className="font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide text-[10px] mb-1">
+      <p className="font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide text-xs mb-1">
         {title}
       </p>
       <div className="space-y-0.5">{children}</div>

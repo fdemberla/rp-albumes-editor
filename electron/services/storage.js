@@ -80,7 +80,9 @@ async function connect() {
   connectingPromise = (async () => {
     // Clean up any stale client
     if (client) {
-      try { await client.end(); } catch {}
+      try {
+        await client.end();
+      } catch {}
       client = null;
       isConnected = false;
     }
@@ -96,13 +98,22 @@ async function connect() {
     await newClient.connect(config);
 
     // Reset state automatically when the connection closes or errors
-    newClient.on("close", () => { isConnected = false; client = null; });
-    newClient.on("error", () => { isConnected = false; client = null; });
+    newClient.on("close", () => {
+      isConnected = false;
+      client = null;
+    });
+    newClient.on("error", () => {
+      isConnected = false;
+      client = null;
+    });
 
-    // Raise the listener limit on the underlying SSH2 Client to accommodate
-    // concurrent SFTP channel operations without spurious warnings
+    // ssh2-sftp-client adds one persistent listener to the underlying SSH2
+    // Client per put/get call and never removes them until the client closes.
+    // With large batches (photo + thumbnail per file) the default limit of 10
+    // (already raised to 30 previously) is exceeded.  Setting 0 = unlimited
+    // disables the false-positive memory-leak warning for this known pattern.
     if (newClient.client) {
-      newClient.client.setMaxListeners(30);
+      newClient.client.setMaxListeners(0);
     }
 
     client = newClient;

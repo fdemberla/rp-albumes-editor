@@ -58,7 +58,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
         console.warn("[Auth] Logout reported failure:", result.error);
       }
     } catch (err) {
-      console.error("[Auth] Logout error — session may not be fully cleared:", err);
+      console.error(
+        "[Auth] Logout error — session may not be fully cleared:",
+        err,
+      );
     }
     set({ user: null, fotografo: null, error: null });
   },

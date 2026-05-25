@@ -239,7 +239,7 @@ ipcMain.handle("image:readMetadata", async (event, filePath) => {
 ipcMain.handle("image:readBulkMetadata", async (event, filePaths) => {
   try {
     await requireSession();
-  } catch (err) {
+  } catch {
     return [{ success: false, filePath: "", error: "Not authenticated" }];
   }
   const results = [];
@@ -337,7 +337,7 @@ ipcMain.handle("image:writeMetadata", async (event, filePath, metadata) => {
 ipcMain.handle("image:writeBulkMetadata", async (event, updates) => {
   try {
     await requireSession();
-  } catch (err) {
+  } catch {
     return [{ success: false, filePath: "", error: "Not authenticated" }];
   }
   const results = [];
@@ -400,11 +400,13 @@ ipcMain.handle("image:writeBulkMetadata", async (event, updates) => {
 
 // Rename file
 ipcMain.handle("file:rename", async (event, oldPath, newPath) => {
+  try {
     await requireSession();
     // Prevent cross-directory moves by verifying parent directories match
     if (path.dirname(path.resolve(oldPath)) !== path.dirname(path.resolve(newPath))) {
       return { success: false, error: "Rename must stay within the same directory" };
     }
+    await fs.rename(oldPath, newPath);
     return { success: true, newPath };
   } catch (error) {
     return {
@@ -418,7 +420,7 @@ ipcMain.handle("file:rename", async (event, oldPath, newPath) => {
 ipcMain.handle("file:bulkRename", async (event, renames) => {
   try {
     await requireSession();
-  } catch (err) {
+  } catch {
     return [{ success: false, oldPath: "", error: "Not authenticated" }];
   }
   const results = [];
@@ -429,6 +431,7 @@ ipcMain.handle("file:bulkRename", async (event, renames) => {
         results.push({ success: false, oldPath: rename.oldPath, error: "Rename must stay within the same directory" });
         continue;
       }
+      await fs.rename(rename.oldPath, rename.newPath);
       results.push({
         success: true,
         oldPath: rename.oldPath,
@@ -454,6 +457,8 @@ ipcMain.handle("image:getPreview", async (event, filePath) => {
     if (!ALLOWED_MEDIA_EXTENSIONS.has(ext)) {
       return { success: false, error: "Unsupported file type" };
     }
+    const rawExts = [
+      ".cr2",
       ".cr3",
       ".nef",
       ".arw",

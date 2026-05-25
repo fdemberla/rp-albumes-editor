@@ -119,7 +119,7 @@ export default function ImageImport() {
         {loading && (
           <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 rounded-lg flex items-center justify-center z-50">
             <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin">
+              <div className="animate-spin motion-reduce:animate-none">
                 <Loader2 className="w-8 h-8 text-blue-600" />
               </div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">

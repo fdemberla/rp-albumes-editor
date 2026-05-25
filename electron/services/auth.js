@@ -93,7 +93,9 @@ function createCachePlugin() {
           const encrypted = safeStorage.encryptString(data);
           fs.writeFileSync(CACHE_FILE, encrypted);
         } else {
-          console.warn("[Auth] safeStorage not available — token cache stored unencrypted");
+          console.warn(
+            "[Auth] safeStorage not available — token cache stored unencrypted",
+          );
           fs.writeFileSync(CACHE_FILE, data);
         }
       } catch (err) {

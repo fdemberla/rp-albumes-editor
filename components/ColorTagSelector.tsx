@@ -66,6 +66,8 @@ export default function ColorTagSelector({
               key={ct.value}
               type="button"
               title={ct.label}
+              aria-label={active ? `${ct.label} (seleccionado)` : ct.label}
+              aria-pressed={active}
               onClick={() => toggle(ct.value)}
               className={`${dotSize} rounded-full transition-all duration-150 ${ct.bg} ${
                 active

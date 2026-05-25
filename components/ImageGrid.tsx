@@ -88,7 +88,7 @@ export default function ImageGrid() {
             )}
 
             {/* Filename overlay */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+            <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/70 to-transparent p-2">
               <p
                 className="text-xs text-white truncate"
                 title={image.metadata.fileName}

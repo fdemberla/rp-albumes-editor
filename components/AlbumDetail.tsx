@@ -77,6 +77,7 @@ export default function AlbumDetail({
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] =
     useState<DownloadProgress | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   // Listen for download progress events
@@ -190,14 +191,19 @@ export default function AlbumDetail({
 
     setDownloading(true);
     setDownloadProgress(null);
+    setDownloadError(null);
     try {
-      const result = await window.electronAPI.downloadPhotos(currentAlbum.id, selectedPhotos);
+      const result = await window.electronAPI.downloadPhotos(
+        currentAlbum.id,
+        selectedPhotos,
+      );
       if (result.error === "cancelled") {
         setDownloading(false);
         setDownloadProgress(null);
       }
     } catch (err) {
       console.error("Download error:", err);
+      setDownloadError(err instanceof Error ? err.message : "Error al descargar las fotos");
       setDownloading(false);
       setDownloadProgress(null);
     }
@@ -335,12 +341,12 @@ export default function AlbumDetail({
       )}
 
       {/* Error */}
-      {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+      {(error || downloadError) && (
+        <div role="alert" className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">{error || downloadError}</p>
             <button
-              onClick={clearError}
+              onClick={() => { clearError(); setDownloadError(null); }}
               className="text-red-500 hover:text-red-700 text-sm"
             >
               &times;
@@ -429,7 +435,7 @@ export default function AlbumDetail({
 
           {loadingThumbnails && currentAlbum.photos.length > 0 && (
             <div className="text-center py-4">
-              <div className="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
               <p className="text-xs text-gray-500 mt-1">
                 Cargando thumbnails...
               </p>
@@ -491,7 +497,7 @@ export default function AlbumDetail({
                         </div>
                       )}
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                    <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-2">
                       <p className="text-[10px] text-white truncate">
                         {photo.originalFilename}
                       </p>
@@ -557,7 +563,7 @@ function UploadProgressBar({ progress }: { progress: UploadProgress | null }) {
     return (
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
           <p className="text-sm text-blue-700 dark:text-blue-300">
             Preparando archivos...
           </p>
@@ -585,7 +591,7 @@ function UploadProgressBar({ progress }: { progress: UploadProgress | null }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {progress.stage !== "complete" ? (
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
           ) : (
             <Check className="w-4 h-4 text-green-500" />
           )}
@@ -642,7 +648,7 @@ function DownloadProgressBar({
     return (
       <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
         <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
           <p className="text-sm text-indigo-700 dark:text-indigo-300">
             Preparando descarga...
           </p>
@@ -677,7 +683,7 @@ function DownloadProgressBar({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {progress.stage !== "complete" ? (
-            <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
           ) : (
             <Check className="w-4 h-4 text-green-500" />
           )}
