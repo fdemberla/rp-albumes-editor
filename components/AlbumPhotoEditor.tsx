@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useRef, useMemo } from "react";
-import { Check, AlertCircle, Camera, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import {
+  Check,
+  AlertCircle,
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+} from "lucide-react";
 import type { Album, AlbumPhoto, Fotografo } from "@/types/electron";
 import FotografoSelector from "./FotografoSelector";
 import type {
@@ -246,7 +253,9 @@ export default function AlbumPhotoEditor({
       }
     } catch (err) {
       console.error("Error saving photo metadata:", err);
-      setSaveError(err instanceof Error ? err.message : "Error al guardar los metadatos");
+      setSaveError(
+        err instanceof Error ? err.message : "Error al guardar los metadatos",
+      );
     } finally {
       setSaving(false);
     }
@@ -279,12 +288,19 @@ export default function AlbumPhotoEditor({
       {/* Save button + feedback */}
       <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
         {saveSuccess && (
-          <p role="status" className="text-xs text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
-            <Check className="w-3 h-3 shrink-0" /> Metadatos guardados exitosamente
+          <p
+            role="status"
+            className="text-xs text-green-600 dark:text-green-400 mb-2 flex items-center gap-1"
+          >
+            <Check className="w-3 h-3 shrink-0" /> Metadatos guardados
+            exitosamente
           </p>
         )}
         {saveError && (
-          <p role="alert" className="text-xs text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
+          <p
+            role="alert"
+            className="text-xs text-red-600 dark:text-red-400 mb-2 flex items-center gap-1"
+          >
             <AlertCircle className="w-3 h-3 shrink-0" /> {saveError}
           </p>
         )}
@@ -293,7 +309,9 @@ export default function AlbumPhotoEditor({
           disabled={saving}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
-          {saving && <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" />}
+          {saving && (
+            <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" />
+          )}
           {saving
             ? "Guardando..."
             : isSingle

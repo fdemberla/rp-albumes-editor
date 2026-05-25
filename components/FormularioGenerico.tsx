@@ -137,12 +137,20 @@ function FormularioGenericoInner<
                       placeholder={d.placeholder}
                       required={d.required}
                       disabled={d.disabled || loading}
-                      aria-describedby={errorMsg ? `field-${name}-error` : undefined}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
                       aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS}${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     />
                     {errorMsg && (
-                      <p id={`field-${name}-error`} role="alert" className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -162,12 +170,20 @@ function FormularioGenericoInner<
                       placeholder={d.placeholder}
                       required={d.required}
                       disabled={loading}
-                      aria-describedby={errorMsg ? `field-${name}-error` : undefined}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
                       aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS} resize-vertical${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     />
                     {errorMsg && (
-                      <p id={`field-${name}-error`} role="alert" className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -194,12 +210,20 @@ function FormularioGenericoInner<
                       placeholder={d.placeholder}
                       required={d.required}
                       disabled={loading}
-                      aria-describedby={errorMsg ? `field-${name}-error` : undefined}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
                       aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS}${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     />
                     {errorMsg && (
-                      <p id={`field-${name}-error`} role="alert" className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -217,7 +241,9 @@ function FormularioGenericoInner<
                       onBlur={field.handleBlur}
                       required={d.required}
                       disabled={loading}
-                      aria-describedby={errorMsg ? `field-${name}-error` : undefined}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
                       aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS}${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     >
@@ -233,7 +259,13 @@ function FormularioGenericoInner<
                       ))}
                     </select>
                     {errorMsg && (
-                      <p id={`field-${name}-error`} role="alert" className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -344,7 +376,13 @@ function FormularioGenericoInner<
                       initialFotografo={d.initialFotografo}
                     />
                     {errorMsg && (
-                      <p id={`field-${name}-error`} role="alert" className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -409,7 +447,9 @@ function FormularioGenericoInner<
                 disabled={loading || !canSubmit}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" />}
+                {loading && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" />
+                )}
                 {loading ? "Guardando..." : submitLabel}
               </button>
             )}

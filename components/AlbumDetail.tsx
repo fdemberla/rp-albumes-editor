@@ -203,7 +203,9 @@ export default function AlbumDetail({
       }
     } catch (err) {
       console.error("Download error:", err);
-      setDownloadError(err instanceof Error ? err.message : "Error al descargar las fotos");
+      setDownloadError(
+        err instanceof Error ? err.message : "Error al descargar las fotos",
+      );
       setDownloading(false);
       setDownloadProgress(null);
     }
@@ -342,11 +344,19 @@ export default function AlbumDetail({
 
       {/* Error */}
       {(error || downloadError) && (
-        <div role="alert" className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+        <div
+          role="alert"
+          className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md"
+        >
           <div className="flex items-center justify-between">
-            <p className="text-sm text-red-700 dark:text-red-400">{error || downloadError}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">
+              {error || downloadError}
+            </p>
             <button
-              onClick={() => { clearError(); setDownloadError(null); }}
+              onClick={() => {
+                clearError();
+                setDownloadError(null);
+              }}
               className="text-red-500 hover:text-red-700 text-sm"
             >
               &times;

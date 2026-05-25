@@ -4,15 +4,69 @@ import { useCallback } from "react";
 import { X } from "lucide-react";
 
 export const COLOR_TAGS = [
-  { value: "red", label: "Rojo", bg: "bg-red-500", ring: "ring-red-500", dot: "#EF4444" },
-  { value: "orange", label: "Naranja", bg: "bg-orange-500", ring: "ring-orange-500", dot: "#F97316" },
-  { value: "yellow", label: "Amarillo", bg: "bg-yellow-400", ring: "ring-yellow-400", dot: "#FACC15" },
-  { value: "green", label: "Verde", bg: "bg-green-500", ring: "ring-green-500", dot: "#22C55E" },
-  { value: "teal", label: "Verde azul", bg: "bg-teal-500", ring: "ring-teal-500", dot: "#14B8A6" },
-  { value: "blue", label: "Azul", bg: "bg-blue-500", ring: "ring-blue-500", dot: "#3B82F6" },
-  { value: "purple", label: "Púrpura", bg: "bg-purple-500", ring: "ring-purple-500", dot: "#A855F7" },
-  { value: "pink", label: "Rosa", bg: "bg-pink-500", ring: "ring-pink-500", dot: "#EC4899" },
-  { value: "gray", label: "Gris", bg: "bg-gray-400", ring: "ring-gray-400", dot: "#9CA3AF" },
+  {
+    value: "red",
+    label: "Rojo",
+    bg: "bg-red-500",
+    ring: "ring-red-500",
+    dot: "#EF4444",
+  },
+  {
+    value: "orange",
+    label: "Naranja",
+    bg: "bg-orange-500",
+    ring: "ring-orange-500",
+    dot: "#F97316",
+  },
+  {
+    value: "yellow",
+    label: "Amarillo",
+    bg: "bg-yellow-400",
+    ring: "ring-yellow-400",
+    dot: "#FACC15",
+  },
+  {
+    value: "green",
+    label: "Verde",
+    bg: "bg-green-500",
+    ring: "ring-green-500",
+    dot: "#22C55E",
+  },
+  {
+    value: "teal",
+    label: "Verde azul",
+    bg: "bg-teal-500",
+    ring: "ring-teal-500",
+    dot: "#14B8A6",
+  },
+  {
+    value: "blue",
+    label: "Azul",
+    bg: "bg-blue-500",
+    ring: "ring-blue-500",
+    dot: "#3B82F6",
+  },
+  {
+    value: "purple",
+    label: "Púrpura",
+    bg: "bg-purple-500",
+    ring: "ring-purple-500",
+    dot: "#A855F7",
+  },
+  {
+    value: "pink",
+    label: "Rosa",
+    bg: "bg-pink-500",
+    ring: "ring-pink-500",
+    dot: "#EC4899",
+  },
+  {
+    value: "gray",
+    label: "Gris",
+    bg: "bg-gray-400",
+    ring: "ring-gray-400",
+    dot: "#9CA3AF",
+  },
 ] as const;
 
 export type ColorTagValue = (typeof COLOR_TAGS)[number]["value"];

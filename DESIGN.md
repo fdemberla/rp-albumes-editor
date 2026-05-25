@@ -128,6 +128,7 @@ Two themes operate simultaneously and with equal weight. The light surface (gray
 Color is restrained to a single directive: Studio Blue carries all primary action. Every button that does something, every progress indicator that advances, every focus ring that confirms user attention uses this single hue. Semantic states (green for success, red for failure, purple for administration) are deployed once per context and nowhere decoratively. Gray handles all structure. The result is a UI where anything blue is actionable — a rule the eye learns in under a minute and navigates by instinct.
 
 **Key Characteristics:**
+
 - Dense but not cluttered: tight spacing in forms, breathing room in section headers
 - Forms are the product: inputs and labels are first-class, always visible, tabbable in sequence
 - Status is structural: DB and SFTP connection live in the header, not in modals or toast notifications
