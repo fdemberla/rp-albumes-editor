@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import { forwardRef, useImperativeHandle, useCallback } from "react";
 import type {
@@ -16,7 +17,7 @@ import FotografoSelector from "./FotografoSelector";
 // ─── Shared input classes ───────────────────────────────────────────────────
 
 const INPUT_CLASS =
-  "w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent";
+  "w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors";
 
 const LABEL_CLASS =
   "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
@@ -136,10 +137,20 @@ function FormularioGenericoInner<
                       placeholder={d.placeholder}
                       required={d.required}
                       disabled={d.disabled || loading}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
+                      aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS}${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     />
                     {errorMsg && (
-                      <p className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -159,10 +170,20 @@ function FormularioGenericoInner<
                       placeholder={d.placeholder}
                       required={d.required}
                       disabled={loading}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
+                      aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS} resize-vertical${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     />
                     {errorMsg && (
-                      <p className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -189,10 +210,20 @@ function FormularioGenericoInner<
                       placeholder={d.placeholder}
                       required={d.required}
                       disabled={loading}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
+                      aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS}${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     />
                     {errorMsg && (
-                      <p className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -210,6 +241,10 @@ function FormularioGenericoInner<
                       onBlur={field.handleBlur}
                       required={d.required}
                       disabled={loading}
+                      aria-describedby={
+                        errorMsg ? `field-${name}-error` : undefined
+                      }
+                      aria-invalid={errorMsg ? true : undefined}
                       className={`${INPUT_CLASS}${errorMsg ? " border-red-500 dark:border-red-500" : ""}`}
                     >
                       {d.placeholder && (
@@ -224,7 +259,13 @@ function FormularioGenericoInner<
                       ))}
                     </select>
                     {errorMsg && (
-                      <p className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -335,7 +376,13 @@ function FormularioGenericoInner<
                       initialFotografo={d.initialFotografo}
                     />
                     {errorMsg && (
-                      <p className="text-xs text-red-500 mt-1">{errorMsg}</p>
+                      <p
+                        id={`field-${name}-error`}
+                        role="alert"
+                        className="text-xs text-red-500 mt-1"
+                      >
+                        {errorMsg}
+                      </p>
                     )}
                   </>
                 );
@@ -398,8 +445,11 @@ function FormularioGenericoInner<
               <button
                 type="submit"
                 disabled={loading || !canSubmit}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
+                {loading && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" />
+                )}
                 {loading ? "Guardando..." : submitLabel}
               </button>
             )}
@@ -408,7 +458,7 @@ function FormularioGenericoInner<
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               {cancelLabel}
             </button>

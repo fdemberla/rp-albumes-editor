@@ -13,7 +13,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -37,12 +37,13 @@ export default function LoginScreen() {
           {/* Error */}
           {error && (
             <motion.div
+              role="alert"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
             >
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm text-red-700 dark:text-red-400">
                     {error}
@@ -66,7 +67,7 @@ export default function LoginScreen() {
           >
             {loading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin motion-reduce:animate-none" />
                 <span>Iniciando sesión...</span>
               </>
             ) : (

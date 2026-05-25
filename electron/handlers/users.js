@@ -72,6 +72,12 @@ function registerUserHandlers(getPrismaFn) {
         };
       }
 
+      // Validate email format
+      const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(input.email)) {
+        return { success: false, error: "Email inválido." };
+      }
+
       // Check for duplicate email
       const existing = await db.user.findUnique({
         where: { email: input.email.toLowerCase() },
@@ -118,7 +124,8 @@ function registerUserHandlers(getPrismaFn) {
         data.firstName = input.firstName.trim();
       if (input.lastName !== undefined) data.lastName = input.lastName.trim();
       if (input.email !== undefined) data.email = input.email.toLowerCase();
-      if (input.role !== undefined) data.role = input.role;
+      if (input.role !== undefined)
+        data.role = input.role === "ADMIN" ? "ADMIN" : "USER";
 
       const user = await db.user.update({
         where: { id: userId },

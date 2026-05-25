@@ -10,6 +10,7 @@
  */
 
 const { ipcMain } = require("electron");
+const { requireSession } = require("./auth");
 
 let getPrisma;
 
@@ -19,6 +20,7 @@ function registerFotografoHandlers(getPrismaFn) {
   // ─── List / Search Fotografos ──────────────────────────────────────────
   ipcMain.handle("fotografo:list", async (_event, search) => {
     try {
+      await requireSession();
       const db = getPrisma();
 
       const where = {};
@@ -47,6 +49,7 @@ function registerFotografoHandlers(getPrismaFn) {
   // ─── Create Fotografo ────────────────────────────────────────────────
   ipcMain.handle("fotografo:create", async (_event, input) => {
     try {
+      await requireSession();
       const db = getPrisma();
 
       if (!input.firstName || !input.lastName) {
@@ -109,6 +112,7 @@ function registerFotografoHandlers(getPrismaFn) {
   // ─── Update Fotografo ────────────────────────────────────────────────
   ipcMain.handle("fotografo:update", async (_event, fotografoId, input) => {
     try {
+      await requireSession();
       const db = getPrisma();
 
       const data = {};
@@ -135,6 +139,7 @@ function registerFotografoHandlers(getPrismaFn) {
   // ─── Delete Fotografo ────────────────────────────────────────────────
   ipcMain.handle("fotografo:delete", async (_event, fotografoId) => {
     try {
+      await requireSession();
       const db = getPrisma();
 
       // Check if any albums reference this fotografo
@@ -159,6 +164,7 @@ function registerFotografoHandlers(getPrismaFn) {
   // ─── Get By Email ────────────────────────────────────────────────────
   ipcMain.handle("fotografo:getByEmail", async (_event, email) => {
     try {
+      await requireSession();
       const db = getPrisma();
       const fotografo = await db.fotografo.findUnique({
         where: { email: email.toLowerCase() },

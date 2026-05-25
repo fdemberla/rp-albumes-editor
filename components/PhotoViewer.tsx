@@ -40,7 +40,10 @@ export default function PhotoViewer({
         if (cancelled) break;
         if (p.thumbnailPath) {
           try {
-            const result = await window.electronAPI.getAlbumThumbnail(p.thumbnailPath);
+            const result = await window.electronAPI.getAlbumThumbnail(
+              p.albumId,
+              p.id,
+            );
             if (result.success && result.data) {
               thumbs[p.id] = result.data;
             }
@@ -52,7 +55,9 @@ export default function PhotoViewer({
       if (!cancelled) setThumbnails(thumbs);
     };
     loadThumbnails();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [photos]);
 
   // Load full-resolution image or video
@@ -60,10 +65,15 @@ export default function PhotoViewer({
     if (!photo?.storedPath || !window.electronAPI) return;
     setLoadingImage(true);
     try {
-      const result = await window.electronAPI.getAlbumPhoto(photo.storedPath);
+      const result = await window.electronAPI.getAlbumPhoto(
+        photo.albumId,
+        photo.id,
+      );
       if (result.success && result.data) {
         setImageData(result.data);
-        setMediaType(result.mediaType || (photo.mediaType === "video" ? "video" : "photo"));
+        setMediaType(
+          result.mediaType || (photo.mediaType === "video" ? "video" : "photo"),
+        );
       } else {
         setImageData(null);
       }
@@ -125,7 +135,7 @@ export default function PhotoViewer({
       transition={{ duration: 0.2 }}
     >
       {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/70 to-transparent">
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-linear-to-b from-black/70 to-transparent">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
@@ -182,9 +192,11 @@ export default function PhotoViewer({
         <div className="w-full h-full flex items-center justify-center p-12">
           {loadingImage ? (
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-2 border-white/60 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
               <p className="text-sm text-white/50">
-                {photo.mediaType === "video" ? "Cargando video..." : "Cargando imagen..."}
+                {photo.mediaType === "video"
+                  ? "Cargando video..."
+                  : "Cargando imagen..."}
               </p>
             </div>
           ) : imageData ? (
@@ -236,13 +248,13 @@ export default function PhotoViewer({
 
         {/* Bottom thumbnail strip */}
         {photos.length > 1 && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent pt-6 pb-3 px-4">
+          <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/70 to-transparent pt-6 pb-3 px-4">
             <div className="flex justify-center gap-1.5 overflow-x-auto max-w-full scrollbar-thin">
               {photos.map((p, i) => (
                 <button
                   key={p.id}
                   onClick={() => goTo(i)}
-                  className={`flex-shrink-0 w-12 h-12 rounded overflow-hidden border-2 transition-all ${
+                  className={`shrink-0 w-12 h-12 rounded overflow-hidden border-2 transition-all ${
                     i === currentIndex
                       ? "border-white ring-1 ring-white/50 scale-110"
                       : "border-transparent opacity-50 hover:opacity-80"

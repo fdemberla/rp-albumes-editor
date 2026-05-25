@@ -167,7 +167,7 @@ export default function AlbumManager() {
       {/* Loading */}
       {loading && (
         <div className="text-center py-8">
-          <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
             Cargando álbumes...
           </p>
@@ -323,10 +323,13 @@ function AlbumCardPreview({ album }: { album: Album }) {
 
     async function loadThumbs() {
       const results: string[] = [];
-      for (const thumbPath of album.previewThumbnails) {
+      for (const thumbnail of album.previewThumbnails) {
         if (cancelled) return;
         try {
-          const res = await window.electronAPI.getAlbumThumbnail(thumbPath);
+          const res = await window.electronAPI.getAlbumThumbnail(
+            album.id,
+            thumbnail.id,
+          );
           if (res.success && res.data) {
             results.push(res.data);
           }
@@ -362,7 +365,7 @@ function AlbumCardPreview({ album }: { album: Album }) {
   // No photos — show gradient placeholder
   if (loaded && images.length === 0) {
     return (
-      <div className="h-36 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+      <div className="h-36 bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center">
         <span className="text-4xl text-white/80">
           {album.photoCount > 0 ? `${album.photoCount}` : "0"}
         </span>
@@ -375,7 +378,7 @@ function AlbumCardPreview({ album }: { album: Album }) {
   if (!loaded) {
     return (
       <div className="h-36 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
       </div>
     );
   }

@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-25T00:00:00Z",
+  "title": "Design System: Editor de Metadatos",
+  "extensions": {
+    "colorMeta": {
+      "studio-blue": {
+        "role": "primary",
+        "displayName": "Studio Blue",
+        "canonical": "oklch(55% 0.21 263)",
+        "tonalRamp": [
+          "oklch(15% 0.06 263)",
+          "oklch(25% 0.10 263)",
+          "oklch(35% 0.15 263)",
+          "oklch(43% 0.18 263)",
+          "oklch(55% 0.21 263)",
+          "oklch(63% 0.20 263)",
+          "oklch(76% 0.13 263)",
+          "oklch(92% 0.05 263)"
+        ]
+      },
+      "studio-blue-deep": {
+        "role": "primary-deep",
+        "displayName": "Studio Blue Deep",
+        "canonical": "oklch(47% 0.20 264)",
+        "tonalRamp": null
+      },
+      "studio-blue-light": {
+        "role": "primary-light",
+        "displayName": "Studio Blue Light",
+        "canonical": "oklch(63% 0.20 263)",
+        "tonalRamp": null
+      },
+      "surface-light": {
+        "role": "neutral-bg",
+        "displayName": "Studio Surface",
+        "canonical": "oklch(98% 0.003 264)",
+        "tonalRamp": [
+          "oklch(20% 0.005 264)",
+          "oklch(30% 0.006 264)",
+          "oklch(45% 0.006 264)",
+          "oklch(60% 0.004 264)",
+          "oklch(72% 0.004 264)",
+          "oklch(84% 0.003 264)",
+          "oklch(93% 0.002 264)",
+          "oklch(98% 0.003 264)"
+        ]
+      },
+      "surface-dark": {
+        "role": "neutral-bg-dark",
+        "displayName": "Production Dark",
+        "canonical": "oklch(18% 0.008 264)",
+        "tonalRamp": null
+      },
+      "semantic-success": {
+        "role": "semantic",
+        "displayName": "Confirmed Green",
+        "canonical": "oklch(50% 0.18 145)",
+        "tonalRamp": null
+      },
+      "semantic-danger": {
+        "role": "semantic",
+        "displayName": "Alert Red",
+        "canonical": "oklch(50% 0.22 28)",
+        "tonalRamp": null
+      },
+      "semantic-admin": {
+        "role": "semantic",
+        "displayName": "Admin Purple",
+        "canonical": "oklch(54% 0.27 307)",
+        "tonalRamp": null
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles, album names, dialog headings. One per screen region maximum."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles, panel subheadings, collapsible section labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Form field values, descriptions, list items, status messages. 65–70ch max line length."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form field labels, column headers, badge text. Always visible at rest — never placeholder-only."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "File paths, metadata technical values, IDs. Geist Mono only. Never for interface labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-low",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "Cards and panels. Default container shadow. Signals bounded surface without competing with content."
+      },
+      {
+        "name": "ambient-mid",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Card hover state only. Never the default state of any surface."
+      },
+      {
+        "name": "ambient-high",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "purpose": "Modals and dialogs. Strongest shadow; marks blocking surfaces that demand attention."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-standard",
+        "value": "cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "All state transitions: hover, open/close, slide-in panels."
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Color transitions, hover state changes."
+      },
+      {
+        "name": "duration-standard",
+        "value": "200ms",
+        "purpose": "Panel slide-in/out, collapsible sections."
+      },
+      {
+        "name": "duration-progress",
+        "value": "300ms",
+        "purpose": "Progress bar fill transitions only."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" },
+      { "name": "max-content", "value": "1600px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action trigger. Studio Blue fill, white text, 6px radius. Hover deepens the blue.",
+      "html": "<button class=\"ds-btn-primary\">Guardar cambios</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: #2563eb; color: #ffffff; font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1.25; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s cubic-bezier(0, 0, 0.2, 1); } .ds-btn-primary:hover { background: #1d4ed8; } .ds-btn-primary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; background: #1d4ed8; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary and cancel actions. Transparent fill, blue stroke and text. Hover tints with blue-50.",
+      "html": "<button class=\"ds-btn-secondary\">Cancelar</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: transparent; color: #2563eb; font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1.25; border: 1px solid #93c5fd; border-radius: 6px; cursor: pointer; transition: background 0.15s cubic-bezier(0, 0, 0.2, 1); } .ds-btn-secondary:hover { background: #eff6ff; } .ds-btn-secondary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive actions: delete album, remove photo. Semantic red fill, never used decoratively.",
+      "html": "<button class=\"ds-btn-danger\">Eliminar álbum</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #dc2626; color: #ffffff; font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; line-height: 1.25; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s cubic-bezier(0, 0, 0.2, 1); } .ds-btn-danger:hover { background: #b91c1c; } .ds-btn-danger:focus-visible { outline: 2px solid #dc2626; outline-offset: 2px; } .ds-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The core EXIF editing primitive. Border stroke, white fill, ring-on-focus. Label always visible above.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\">Título de la foto</label><input class=\"ds-input\" type=\"text\" placeholder=\"Ingrese título\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 4px; } .ds-label { font-family: Roboto, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: #374151; letter-spacing: 0.01em; line-height: 1.3; } .ds-input { width: 100%; padding: 8px 12px; background: #ffffff; color: #111827; border: 1px solid #d1d5db; border-radius: 6px; font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.5; outline: none; transition: border-color 0.15s cubic-bezier(0, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0, 0, 0.2, 1); } .ds-input:focus { border-color: transparent; box-shadow: 0 0 0 2px #2563eb; } .ds-input::placeholder { color: #9ca3af; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The primary bounded surface. Ambient shadow, 8px radius, white background. Hover deepens the shadow.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Boda Martínez · Enero 2025</h3><p class=\"ds-card-body\">48 fotos · 24 ene 2025 · Guadalajara</p></div>",
+      "css": ".ds-card { background: #ffffff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); transition: box-shadow 0.15s cubic-bezier(0, 0, 0.2, 1); } .ds-card:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); } .ds-card-title { font-family: Roboto, system-ui, sans-serif; font-size: 1rem; font-weight: 500; color: #111827; margin: 0 0 4px; line-height: 1.4; } .ds-card-body { font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; color: #4b5563; margin: 0; line-height: 1.5; }"
+    },
+    {
+      "name": "Info Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Count and status labels. Blue tint pill, text-xs, rounded-full. Passive information only.",
+      "html": "<span class=\"ds-badge\">48 fotos</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; padding: 2px 8px; background: #dbeafe; color: #1e40af; font-family: Roboto, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; line-height: 1.3; white-space: nowrap; }"
+    },
+    {
+      "name": "Admin Badge",
+      "kind": "chip",
+      "refersTo": "badge-admin",
+      "description": "Role indicator for admin users. Purple tint; never used for anything other than the ADMIN role.",
+      "html": "<span class=\"ds-badge-admin\">Admin</span>",
+      "css": ".ds-badge-admin { display: inline-flex; align-items: center; padding: 2px 6px; background: #f3e8ff; color: #7e22ce; font-family: Roboto, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; line-height: 1.3; white-space: nowrap; }"
+    },
+    {
+      "name": "Alert Box",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Contextual feedback panel. Three variants: info (blue), error (red), success (green). Icon + message layout.",
+      "html": "<div class=\"ds-alert ds-alert-error\"><svg class=\"ds-alert-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"13\"/><line x1=\"12\" y1=\"17\" x2=\"12.01\" y2=\"17\"/></svg><span>Error al conectar con la base de datos. Verifique la configuración.</span></div>",
+      "css": ".ds-alert { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 6px; font-family: Roboto, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.5; } .ds-alert-icon { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; } .ds-alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; } .ds-alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; } .ds-alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }"
+    },
+    {
+      "name": "Progress Bar",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Upload progress indicator. Blue track and fill, transitions on width. Turns green on completion.",
+      "html": "<div class=\"ds-progress-track\"><div class=\"ds-progress-fill\" style=\"width: 65%\"></div></div>",
+      "css": ".ds-progress-track { width: 100%; height: 10px; background: #bfdbfe; border-radius: 9999px; overflow: hidden; } .ds-progress-fill { height: 100%; background: #2563eb; border-radius: 9999px; transition: width 0.3s cubic-bezier(0, 0, 0.2, 1); } .ds-progress-fill.ds-progress-complete { background: #16a34a; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Production Floor",
+    "overview": "Editor de Metadatos is built on the metaphor of a working production floor — an environment where every surface exists to facilitate the work, not narrate it. The design is calibrated for photographers processing hundreds of images: information density takes precedence over whitespace, form fields are the primary interface, and status indicators are always visible regardless of which screen the user is on.\n\nTwo themes operate simultaneously and with equal weight. The light surface reads cleanly under daylight in an editing suite. The dark surface is a first-class environment — built for color-calibrated studio monitors where ambient light is controlled. Both modes share identical structural hierarchy and spacing; only surface and contrast values differ.\n\nColor is restrained to a single directive: Studio Blue carries all primary action. Every button that does something, every progress indicator that advances, every focus ring that confirms user attention uses this single hue. Semantic states are deployed once per context. The result is a UI where anything blue is actionable — a rule the eye learns in under a minute.",
+    "keyCharacteristics": [
+      "Dense but not cluttered: tight spacing in forms, breathing room in section headers",
+      "Forms are the product: inputs and labels are first-class, always visible, tabbable in sequence",
+      "Status is structural: DB and SFTP connection live in the header, not in modals or toasts",
+      "Dark mode first-class: both themes built symmetrically, neither derived from the other",
+      "Motion functional only: spinners, progress bars, slide-in panels — never decorative"
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Studio Blue is the only color that means 'this is interactive and will do something.' No other non-semantic color is used for interactive states. Its rarity is what makes it readable.",
+        "section": "colors"
+      },
+      {
+        "name": "The Semantic Quarantine Rule",
+        "body": "Green, red, and purple are reserved for their exact semantic roles. They do not appear as decorative accents, section headers, hover states, or visual interest on non-semantic elements.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight-Before-Size Rule",
+        "body": "Hierarchy is achieved by weight shift (400→500→600) before size shift. Reaching for a larger size when a weight increase would suffice produces visual noise and breaks the compact rhythm of form-heavy screens.",
+        "section": "typography"
+      },
+      {
+        "name": "The Label Always Visible Rule",
+        "body": "Form field labels are always visible — never placeholder-only, never floating without a visible resting state. EXIF forms are the product; labels must be readable without interacting with the field.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at rest. Shadows appear only as a response to state (hover elevation, focus, modal overlay) or to define a bounded container against the page surface.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use Studio Blue (#2563eb) as the single interactive signal. If it's blue, it does something.",
+      "Do show DB and SFTP connection status persistently in the header — never behind a click or in a modal.",
+      "Do label all form fields visibly at rest, even in dense/compact layouts.",
+      "Do keep button border-radius at 6px (rounded-md) across all variants for visual consistency.",
+      "Do use transition-colors duration-150 for hover states — color only, not size or transform.",
+      "Do pair dark mode values symmetrically: every light surface has a designed dark counterpart.",
+      "Do use motion-reduce:animate-none on all CSS animations to respect the OS accessibility setting.",
+      "Do apply aria-label and aria-pressed to color tag buttons — color alone is never sufficient identification.",
+      "Do use bg-linear-to-* (Tailwind v4) for functional photo overlay gradients."
+    ],
+    "donts": [
+      "Don't use gradient hero sections, large rounded CTAs, testimonial-style cards, or any SaaS marketing pattern.",
+      "Don't build with heavy enterprise gray: uniform hairline-bordered tables or indistinguishable panel backgrounds.",
+      "Don't use green-on-black, monospace for interface text, or any element that reads as a terminal aesthetic.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe on cards or callouts.",
+      "Don't apply background-clip: text with a gradient for decorative text — use a solid color.",
+      "Don't use glassmorphism as a default card style — reserved for photo overlays in PhotoViewer.",
+      "Don't render the hero-metric pattern (big number, small label, gradient accent) anywhere in the UI.",
+      "Don't use flex-shrink-0 — use shrink-0 (Tailwind v4).",
+      "Don't use bg-gradient-to-* — use bg-linear-to-* (Tailwind v4).",
+      "Don't use arbitrary sizes like text-[10px] — use the type scale (text-xs)."
+    ]
+  }
+}

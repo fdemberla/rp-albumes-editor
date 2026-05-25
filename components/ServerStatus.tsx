@@ -29,7 +29,7 @@ export default function ServerStatus() {
         <Database
           className={`w-3.5 h-3.5 ${
             dbConnected === null
-              ? "text-gray-400 animate-pulse"
+              ? "text-gray-400 animate-pulse motion-reduce:animate-none"
               : dbConnected
                 ? "text-green-500"
                 : "text-red-500"
@@ -53,7 +53,7 @@ export default function ServerStatus() {
           <Server
             className={`w-3.5 h-3.5 ${
               sftpConnected === null
-                ? "text-gray-400 animate-pulse"
+                ? "text-gray-400 animate-pulse motion-reduce:animate-none"
                 : "text-green-500"
             }`}
           />

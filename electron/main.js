@@ -9,6 +9,7 @@ const {
   dialog,
   protocol,
   net,
+  session,
 } = require("electron");
 
 // Resolve .env path: in production look next to the executable, in dev use project root
@@ -17,17 +18,6 @@ const envPath = app.isPackaged
   : path.join(__dirname, "..", ".env");
 
 require("dotenv").config({ path: envPath });
-
-// ADD THIS TEMPORARILY:
-console.log("=== ENV DEBUG ===");
-console.log("isPackaged:", app.isPackaged);
-console.log("resourcesPath:", process.resourcesPath);
-console.log("envPath:", envPath);
-console.log(
-  "AZURE_CLIENT_ID:",
-  process.env.AZURE_CLIENT_ID ? "SET" : "NOT SET",
-);
-console.log("=================");
 
 const fs = require("fs").promises;
 const url = require("url");
@@ -44,12 +34,19 @@ const {
   cleanup: albumCleanup,
   getPrisma,
 } = require("./handlers/albums");
-const { registerAuthHandlers } = require("./handlers/auth");
+const { registerAuthHandlers, requireSession } = require("./handlers/auth");
 const { registerUserHandlers } = require("./handlers/users");
 const { registerFotografoHandlers } = require("./handlers/fotografos");
 
 let mainWindow;
 const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
+
+// Allowed extensions for local image/video operations
+const ALLOWED_MEDIA_EXTENSIONS = new Set([
+  ".jpg", ".jpeg", ".png",
+  ".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2", ".dng", ".raf", ".pef",
+  ".mp4",
+]);
 
 // ─── Register custom protocol for production static files ───────────────────
 if (!isDev) {
@@ -87,6 +84,20 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // ─── Content Security Policy (production only) ──────────────────────────
+  if (!isDev) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [
+            "default-src 'self'; script-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:; media-src 'self' data: blob:;",
+          ],
+        },
+      });
+    });
+  }
+
   // Register app:// protocol to serve static files from out/
   if (!isDev) {
     protocol.handle("app", (request) => {
@@ -182,10 +193,14 @@ ipcMain.handle("dialog:openFolder", async () => {
 // Read image metadata
 ipcMain.handle("image:readMetadata", async (event, filePath) => {
   try {
+    await requireSession();
+    if (!ALLOWED_MEDIA_EXTENSIONS.has(path.extname(filePath).toLowerCase())) {
+      return { success: false, error: "Unsupported file type" };
+    }
+
     const metadata = await exiftool.read(filePath);
 
     return {
-      success: true,
       metadata: {
         fileName: path.basename(filePath),
         filePath: filePath,
@@ -222,14 +237,23 @@ ipcMain.handle("image:readMetadata", async (event, filePath) => {
 
 // Read metadata for multiple images
 ipcMain.handle("image:readBulkMetadata", async (event, filePaths) => {
+  try {
+    await requireSession();
+  } catch {
+    return [{ success: false, filePath: "", error: "Not authenticated" }];
+  }
   const results = [];
 
   for (const filePath of filePaths) {
     try {
+      if (!ALLOWED_MEDIA_EXTENSIONS.has(path.extname(filePath).toLowerCase())) {
+        results.push({ success: false, filePath, error: "Unsupported file type" });
+        continue;
+      }
+
       const metadata = await exiftool.read(filePath);
 
       results.push({
-        success: true,
         filePath: filePath,
         metadata: {
           fileName: path.basename(filePath),
@@ -271,6 +295,11 @@ ipcMain.handle("image:readBulkMetadata", async (event, filePaths) => {
 // Write metadata to image
 ipcMain.handle("image:writeMetadata", async (event, filePath, metadata) => {
   try {
+    await requireSession();
+    if (!ALLOWED_MEDIA_EXTENSIONS.has(path.extname(filePath).toLowerCase())) {
+      return { success: false, error: "Unsupported file type" };
+    }
+
     const tags = {};
 
     if (metadata.title) tags.Title = metadata.title;
@@ -306,10 +335,20 @@ ipcMain.handle("image:writeMetadata", async (event, filePath, metadata) => {
 
 // Write metadata to multiple images
 ipcMain.handle("image:writeBulkMetadata", async (event, updates) => {
+  try {
+    await requireSession();
+  } catch {
+    return [{ success: false, filePath: "", error: "Not authenticated" }];
+  }
   const results = [];
 
   for (const update of updates) {
     try {
+      if (!ALLOWED_MEDIA_EXTENSIONS.has(path.extname(update.filePath).toLowerCase())) {
+        results.push({ success: false, filePath: update.filePath, error: "Unsupported file type" });
+        continue;
+      }
+
       const tags = {};
 
       if (update.metadata.title !== undefined)
@@ -362,6 +401,11 @@ ipcMain.handle("image:writeBulkMetadata", async (event, updates) => {
 // Rename file
 ipcMain.handle("file:rename", async (event, oldPath, newPath) => {
   try {
+    await requireSession();
+    // Prevent cross-directory moves by verifying parent directories match
+    if (path.dirname(path.resolve(oldPath)) !== path.dirname(path.resolve(newPath))) {
+      return { success: false, error: "Rename must stay within the same directory" };
+    }
     await fs.rename(oldPath, newPath);
     return { success: true, newPath };
   } catch (error) {
@@ -374,10 +418,19 @@ ipcMain.handle("file:rename", async (event, oldPath, newPath) => {
 
 // Bulk rename files
 ipcMain.handle("file:bulkRename", async (event, renames) => {
+  try {
+    await requireSession();
+  } catch {
+    return [{ success: false, oldPath: "", error: "Not authenticated" }];
+  }
   const results = [];
 
   for (const rename of renames) {
     try {
+      if (path.dirname(path.resolve(rename.oldPath)) !== path.dirname(path.resolve(rename.newPath))) {
+        results.push({ success: false, oldPath: rename.oldPath, error: "Rename must stay within the same directory" });
+        continue;
+      }
       await fs.rename(rename.oldPath, rename.newPath);
       results.push({
         success: true,
@@ -399,7 +452,11 @@ ipcMain.handle("file:bulkRename", async (event, renames) => {
 // Get image as base64 for preview
 ipcMain.handle("image:getPreview", async (event, filePath) => {
   try {
+    await requireSession();
     const ext = path.extname(filePath).toLowerCase();
+    if (!ALLOWED_MEDIA_EXTENSIONS.has(ext)) {
+      return { success: false, error: "Unsupported file type" };
+    }
     const rawExts = [
       ".cr2",
       ".cr3",
@@ -448,6 +505,7 @@ ipcMain.handle("image:getPreview", async (event, filePath) => {
 // List all images in a folder
 ipcMain.handle("folder:listImages", async (event, folderPath) => {
   try {
+    await requireSession();
     const files = await fs.readdir(folderPath);
     const imageExtensions = [
       ".jpg",
@@ -487,6 +545,7 @@ ipcMain.handle("folder:listImages", async (event, folderPath) => {
 // Process bulk images: copy/move files with metadata and optional rename
 ipcMain.handle("image:processBulkImages", async (event, operations) => {
   try {
+    await requireSession();
     if (!Array.isArray(operations)) {
       throw new Error("Invalid operations payload");
     }

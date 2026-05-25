@@ -22,7 +22,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Verificando sesión...
           </p>
@@ -40,7 +40,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-[1600px] mx-auto px-4 py-3">
+        <div className="max-w-400 mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -58,7 +58,7 @@ export default function Home() {
                   {user.firstName} {user.lastName}
                 </span>
                 <span
-                  className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${
+                  className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${
                     user.role === "ADMIN"
                       ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"
                       : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
@@ -83,7 +83,7 @@ export default function Home() {
               {/* Logout */}
               <button
                 onClick={logout}
-                className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cerrar sesión
               </button>
@@ -92,7 +92,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto p-4">
+      <main className="max-w-400 mx-auto p-4">
         <AnimatePresence mode="wait">
           {showAdmin ? (
             <motion.div

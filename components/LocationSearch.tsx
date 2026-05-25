@@ -127,7 +127,7 @@ export default function LocationSearch({
       )}
 
       <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-1">
-        <Lightbulb className="w-3 h-3 mt-0.5 flex-shrink-0" />
+        <Lightbulb className="w-3 h-3 mt-0.5 shrink-0" />
         <span>
           Busca por ciudad, dirección o lugar. Se guardarán las coordenadas GPS
           junto con la ubicación.
