@@ -117,4 +117,25 @@ function registerAuthHandlers(getPrismaFn) {
   });
 }
 
-module.exports = { registerAuthHandlers, resolveUser };
+/**
+ * Verify the caller has an active session and is a registered user.
+ * Throws an error if not authenticated. Returns the User record.
+ */
+async function requireSession() {
+  const msalResult = await authService.getSession();
+  if (!msalResult || !msalResult.account) {
+    throw new Error("No autorizado — sesión no válida.");
+  }
+  const email = (
+    msalResult.account.username ||
+    msalResult.account.upn ||
+    ""
+  ).toLowerCase();
+  if (!email) throw new Error("No autorizado — email no encontrado.");
+  const db = getPrisma();
+  const user = await db.user.findUnique({ where: { email } });
+  if (!user) throw new Error("No autorizado — usuario no encontrado.");
+  return user;
+}
+
+module.exports = { registerAuthHandlers, resolveUser, requireSession };

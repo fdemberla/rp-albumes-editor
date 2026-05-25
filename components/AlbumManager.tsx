@@ -323,10 +323,10 @@ function AlbumCardPreview({ album }: { album: Album }) {
 
     async function loadThumbs() {
       const results: string[] = [];
-      for (const thumbPath of album.previewThumbnails) {
+      for (const thumbnail of album.previewThumbnails) {
         if (cancelled) return;
         try {
-          const res = await window.electronAPI.getAlbumThumbnail(thumbPath);
+          const res = await window.electronAPI.getAlbumThumbnail(album.id, thumbnail.id);
           if (res.success && res.data) {
             results.push(res.data);
           }

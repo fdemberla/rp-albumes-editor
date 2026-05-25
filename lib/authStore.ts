@@ -53,9 +53,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   logout: async () => {
     try {
-      await window.electronAPI.logout();
-    } catch {
-      // ignore
+      const result = await window.electronAPI.logout();
+      if (!result.success) {
+        console.warn("[Auth] Logout reported failure:", result.error);
+      }
+    } catch (err) {
+      console.error("[Auth] Logout error — session may not be fully cleared:", err);
     }
     set({ user: null, fotografo: null, error: null });
   },

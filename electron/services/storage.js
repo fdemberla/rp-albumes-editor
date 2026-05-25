@@ -34,9 +34,19 @@ function getBasePath() {
  */
 function isPathSafe(segment) {
   if (!segment || typeof segment !== "string") return false;
-  // Block path traversal, null bytes, and absolute paths
+  // Decode URL-encoded sequences and check both raw and decoded forms
+  let decoded;
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    return false; // Malformed percent-encoding
+  }
+  // Block path traversal, null bytes, and absolute paths in raw form
   if (segment.includes("..") || segment.includes("\0")) return false;
   if (segment.startsWith("/") || segment.startsWith("\\")) return false;
+  // Same checks on decoded form to catch %2e%2e%2f and similar
+  if (decoded.includes("..") || decoded.includes("\0")) return false;
+  if (decoded.startsWith("/") || decoded.startsWith("\\")) return false;
   return true;
 }
 

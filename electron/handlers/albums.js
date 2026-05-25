@@ -2,8 +2,9 @@ const { ipcMain, dialog, BrowserWindow } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { Pool } = require("pg");
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
+const { requireSession } = require("./auth");
 const archiver = require("archiver");
 const storage = require("../services/storage");
 const compression = require("../services/compression");
@@ -78,6 +79,7 @@ function registerAlbumHandlers() {
   // ─── Create Album ───────────────────────────────────────────────────────
   ipcMain.handle("album:create", async (_event, input) => {
     try {
+      await requireSession();
       const db = getPrisma();
       const data = {
         name: input.name,
@@ -107,6 +109,7 @@ function registerAlbumHandlers() {
   // ─── List Albums (with filters and pagination) ──────────────────────────
   ipcMain.handle("album:list", async (_event, filters) => {
     try {
+      await requireSession();
       const db = getPrisma();
       const where = {};
 
@@ -167,24 +170,21 @@ function registerAlbumHandlers() {
           const escapeLike = (s) =>
             s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 
-          const params = [];
-          const chipConditions = [];
+          const chipSqlConditions = filters.keywords
+            .map((chip) => {
+              const words = chip.trim().split(/\s+/).filter(Boolean);
+              if (words.length === 0) return null;
+              const wordConditions = words.map(
+                (word) => Prisma.sql`k ILIKE ${`%${escapeLike(word)}%`}`,
+              );
+              return Prisma.sql`EXISTS (SELECT 1 FROM unnest(a.keywords) AS k WHERE ${Prisma.join(wordConditions, " AND ")})`;
+            })
+            .filter(Boolean);
 
-          for (const chip of filters.keywords) {
-            const words = chip.trim().split(/\s+/).filter(Boolean);
-            if (words.length === 0) continue;
-            const wordConditions = words.map((word) => {
-              params.push(`%${escapeLike(word)}%`);
-              return `k ILIKE $${params.length}`;
-            });
-            chipConditions.push(
-              `EXISTS (SELECT 1 FROM unnest(a.keywords) AS k WHERE ${wordConditions.join(" AND ")})`,
+          if (chipSqlConditions.length > 0) {
+            const rows = await db.$queryRaw(
+              Prisma.sql`SELECT id::text FROM albums a WHERE ${Prisma.join(chipSqlConditions, " AND ")}`,
             );
-          }
-
-          if (chipConditions.length > 0) {
-            const sql = `SELECT id::text FROM albums a WHERE ${chipConditions.join(" AND ")}`;
-            const rows = await db.$queryRawUnsafe(sql, ...params);
             const ids = rows.map((r) => r.id);
             where.id = { in: ids };
           }
@@ -218,7 +218,7 @@ function registerAlbumHandlers() {
             fotografo: true,
             _count: { select: { photos: true } },
             photos: {
-              select: { thumbnailPath: true },
+              select: { id: true, thumbnailPath: true },
               take: 6,
               orderBy: { createdAt: "asc" },
             },
@@ -231,7 +231,9 @@ function registerAlbumHandlers() {
       const mapped = albums.map((a) => ({
         ...a,
         photoCount: a._count.photos,
-        previewThumbnails: a.photos.map((p) => p.thumbnailPath).filter(Boolean),
+        previewThumbnails: a.photos
+          .filter((p) => p.thumbnailPath)
+          .map((p) => ({ id: p.id, thumbnailPath: p.thumbnailPath })),
         photos: undefined,
         _count: undefined,
       }));
@@ -253,6 +255,7 @@ function registerAlbumHandlers() {
   // ─── Get Album by ID (with photos) ─────────────────────────────────────
   ipcMain.handle("album:get", async (_event, albumId) => {
     try {
+      await requireSession();
       const db = getPrisma();
       const album = await db.album.findUnique({
         where: { id: albumId },
@@ -286,6 +289,7 @@ function registerAlbumHandlers() {
   // ─── Update Album ──────────────────────────────────────────────────────
   ipcMain.handle("album:update", async (_event, albumId, input) => {
     try {
+      await requireSession();
       const db = getPrisma();
       const data = {};
 
@@ -319,6 +323,7 @@ function registerAlbumHandlers() {
   // ─── Delete Album ──────────────────────────────────────────────────────
   ipcMain.handle("album:delete", async (_event, albumId) => {
     try {
+      await requireSession();
       const db = getPrisma();
 
       // Get album to know the date for SFTP directory
@@ -353,6 +358,7 @@ function registerAlbumHandlers() {
   // ─── Upload Photos to Album ─────────────────────────────────────────────
   ipcMain.handle("album:uploadPhotos", async (event, albumId, photos) => {
     try {
+      await requireSession();
       const db = getPrisma();
 
       // Verify album exists and include fotografo for artist derivation
@@ -587,6 +593,7 @@ function registerAlbumHandlers() {
   // ─── Remove Photos from Album ──────────────────────────────────────────
   ipcMain.handle("album:removePhotos", async (_event, albumId, photoIds) => {
     try {
+      await requireSession();
       const db = getPrisma();
 
       // Get photos to delete from SFTP
@@ -627,8 +634,18 @@ function registerAlbumHandlers() {
   });
 
   // ─── Get Photo (full version as base64) ─────────────────────────────────
-  ipcMain.handle("album:getPhoto", async (_event, storedPath) => {
+  ipcMain.handle("album:getPhoto", async (_event, albumId, photoId) => {
     try {
+      await requireSession();
+      const db = getPrisma();
+      const photo = await db.photo.findFirst({
+        where: { id: photoId, albumId: albumId },
+        select: { storedPath: true, mediaType: true },
+      });
+      if (!photo || !photo.storedPath) {
+        return { success: false, error: "Photo not found" };
+      }
+      const storedPath = photo.storedPath;
       const buffer = await storage.downloadFile(storedPath);
       const ext = path.extname(storedPath).toLowerCase();
       const isVideo = ext === ".mp4";
@@ -684,9 +701,18 @@ function registerAlbumHandlers() {
   });
 
   // ─── Get Thumbnail (as base64) ─────────────────────────────────────────
-  ipcMain.handle("album:getThumbnail", async (_event, thumbnailPath) => {
+  ipcMain.handle("album:getThumbnail", async (_event, albumId, photoId) => {
     try {
-      const buffer = await storage.downloadFile(thumbnailPath);
+      await requireSession();
+      const db = getPrisma();
+      const photo = await db.photo.findFirst({
+        where: { id: photoId, albumId: albumId },
+        select: { thumbnailPath: true },
+      });
+      if (!photo || !photo.thumbnailPath) {
+        return { success: false, error: "Thumbnail not found" };
+      }
+      const buffer = await storage.downloadFile(photo.thumbnailPath);
       const base64 = buffer.toString("base64");
       return {
         success: true,
@@ -702,6 +728,7 @@ function registerAlbumHandlers() {
     "album:updatePhotoMetadata",
     async (_event, albumId, photoIds, metadata) => {
       try {
+        await requireSession();
         const db = getPrisma();
 
         // Build the update data from provided metadata fields
@@ -751,10 +778,22 @@ function registerAlbumHandlers() {
   );
 
   // ─── Download Photos ───────────────────────────────────────────────────
-  ipcMain.handle("album:downloadPhotos", async (event, photos) => {
+  ipcMain.handle("album:downloadPhotos", async (event, albumId, photoIds) => {
     try {
-      if (!photos || photos.length === 0) {
+      await requireSession();
+      if (!albumId || !photoIds || photoIds.length === 0) {
         return { success: false, error: "No photos selected" };
+      }
+
+      const db = getPrisma();
+      // Fetch paths from DB — never trust renderer-supplied paths
+      const photos = await db.photo.findMany({
+        where: { id: { in: photoIds }, albumId: albumId },
+        select: { id: true, storedPath: true, originalFilename: true },
+      });
+
+      if (photos.length === 0) {
+        return { success: false, error: "No valid photos found" };
       }
 
       const win = BrowserWindow.getFocusedWindow();
@@ -773,7 +812,7 @@ function registerAlbumHandlers() {
       if (total === 1) {
         // Single photo: direct download with save dialog
         const photo = photos[0];
-        const ext = path.extname(photo.originalFilename) || ".jpg";
+        const ext = path.extname(photo.storedPath).toLowerCase();
         const defaultName = photo.originalFilename || `photo${ext}`;
 
         const { canceled, filePath: savePath } = await dialog.showSaveDialog(
@@ -885,15 +924,25 @@ function registerAlbumHandlers() {
   });
 
   // ─── Read Photo EXIF from SFTP ─────────────────────────────────────────
-  ipcMain.handle("album:readPhotoExif", async (_event, storedPath) => {
+  ipcMain.handle("album:readPhotoExif", async (_event, albumId, photoId) => {
     const os = require("os");
     const { exiftool } = require("exiftool-vendored");
-    const tmpPath = path.join(
-      os.tmpdir(),
-      `exif_${Date.now()}_${path.basename(storedPath)}`,
-    );
+    let tmpPath = null;
     try {
-      const buffer = await storage.downloadFile(storedPath);
+      await requireSession();
+      const db = getPrisma();
+      const photo = await db.photo.findFirst({
+        where: { id: photoId, albumId: albumId },
+        select: { storedPath: true, storedFilename: true },
+      });
+      if (!photo || !photo.storedPath) {
+        return { success: false, error: "Photo not found" };
+      }
+      const buffer = await storage.downloadFile(photo.storedPath);
+      tmpPath = path.join(
+        os.tmpdir(),
+        `exif_${Date.now()}_${path.basename(photo.storedFilename)}`,
+      );
       await fs.promises.writeFile(tmpPath, buffer);
       const tags = await exiftool.read(tmpPath);
 
@@ -960,7 +1009,7 @@ function registerAlbumHandlers() {
       console.error("[Album] Error reading EXIF:", err);
       return { success: false, error: err.message };
     } finally {
-      fs.promises.unlink(tmpPath).catch(() => {});
+      if (tmpPath) fs.promises.unlink(tmpPath).catch(() => {});
     }
   });
 }

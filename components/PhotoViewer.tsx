@@ -40,7 +40,7 @@ export default function PhotoViewer({
         if (cancelled) break;
         if (p.thumbnailPath) {
           try {
-            const result = await window.electronAPI.getAlbumThumbnail(p.thumbnailPath);
+            const result = await window.electronAPI.getAlbumThumbnail(p.albumId, p.id);
             if (result.success && result.data) {
               thumbs[p.id] = result.data;
             }
@@ -60,7 +60,7 @@ export default function PhotoViewer({
     if (!photo?.storedPath || !window.electronAPI) return;
     setLoadingImage(true);
     try {
-      const result = await window.electronAPI.getAlbumPhoto(photo.storedPath);
+      const result = await window.electronAPI.getAlbumPhoto(photo.albumId, photo.id);
       if (result.success && result.data) {
         setImageData(result.data);
         setMediaType(result.mediaType || (photo.mediaType === "video" ? "video" : "photo"));

@@ -73,14 +73,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("album:uploadPhotos", albumId, photos),
   removePhotosFromAlbum: (albumId, photoIds) =>
     ipcRenderer.invoke("album:removePhotos", albumId, photoIds),
-  getAlbumPhoto: (storedPath) =>
-    ipcRenderer.invoke("album:getPhoto", storedPath),
-  getAlbumThumbnail: (thumbnailPath) =>
-    ipcRenderer.invoke("album:getThumbnail", thumbnailPath),
+  getAlbumPhoto: (albumId, photoId) =>
+    ipcRenderer.invoke("album:getPhoto", albumId, photoId),
+  getAlbumThumbnail: (albumId, photoId) =>
+    ipcRenderer.invoke("album:getThumbnail", albumId, photoId),
 
   // ─── Read EXIF from stored photo ─────────────────────────────────────────
-  readPhotoExif: (storedPath) =>
-    ipcRenderer.invoke("album:readPhotoExif", storedPath),
+  readPhotoExif: (albumId, photoId) =>
+    ipcRenderer.invoke("album:readPhotoExif", albumId, photoId),
 
   // ─── Photo Metadata Editing ────────────────────────────────────────────
   updatePhotoMetadata: (albumId, photoIds, metadata) =>
@@ -92,8 +92,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ),
 
   // ─── Photo Download ───────────────────────────────────────────────────
-  downloadPhotos: (photos) =>
-    ipcRenderer.invoke("album:downloadPhotos", photos),
+  downloadPhotos: (albumId, photoIds) =>
+    ipcRenderer.invoke("album:downloadPhotos", albumId, photoIds),
 
   // ─── Download Progress Listener ────────────────────────────────────────
   onDownloadProgress: (callback) => {

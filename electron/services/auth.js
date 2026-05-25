@@ -9,7 +9,8 @@
 const msal = require("@azure/msal-node");
 const path = require("path");
 const http = require("http");
-const { app } = require("electron");
+const crypto = require("crypto");
+const { app, safeStorage } = require("electron");
 const fs = require("fs");
 
 // ─── Configuration ──────────────────────────────────────────────────────────
@@ -23,6 +24,9 @@ const SCOPES = ["User.Read"]; // MS Graph basic profile
 
 // Path for the persistent token cache
 const CACHE_FILE = path.join(app.getPath("userData"), "msal-token-cache.json");
+
+// Pending OAuth state nonce for CSRF protection
+let pendingStateNonce = null;
 
 // ─── MSAL Application ──────────────────────────────────────────────────────
 
@@ -62,7 +66,18 @@ function createCachePlugin() {
   const beforeCacheAccess = async (cacheContext) => {
     try {
       if (fs.existsSync(CACHE_FILE)) {
-        const data = fs.readFileSync(CACHE_FILE, "utf8");
+        const raw = fs.readFileSync(CACHE_FILE);
+        let data;
+        if (safeStorage.isEncryptionAvailable()) {
+          try {
+            data = safeStorage.decryptString(raw);
+          } catch {
+            // Migration: file may be unencrypted plaintext from older version
+            data = raw.toString("utf8");
+          }
+        } else {
+          data = raw.toString("utf8");
+        }
         cacheContext.tokenCache.deserialize(data);
       }
     } catch (err) {
@@ -73,7 +88,14 @@ function createCachePlugin() {
   const afterCacheAccess = async (cacheContext) => {
     if (cacheContext.cacheHasChanged) {
       try {
-        fs.writeFileSync(CACHE_FILE, cacheContext.tokenCache.serialize());
+        const data = cacheContext.tokenCache.serialize();
+        if (safeStorage.isEncryptionAvailable()) {
+          const encrypted = safeStorage.encryptString(data);
+          fs.writeFileSync(CACHE_FILE, encrypted);
+        } else {
+          console.warn("[Auth] safeStorage not available — token cache stored unencrypted");
+          fs.writeFileSync(CACHE_FILE, data);
+        }
       } catch (err) {
         console.warn("[Auth] Failed to write token cache:", err.message);
       }
@@ -96,10 +118,15 @@ const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/auth/callback`;
 async function login() {
   const cca = await getMsalApp();
 
+  // Generate CSRF state nonce
+  const stateNonce = crypto.randomBytes(16).toString("hex");
+  pendingStateNonce = stateNonce;
+
   // Generate the auth URL
   const authCodeUrlParams = {
     scopes: SCOPES,
     redirectUri: REDIRECT_URI,
+    state: stateNonce,
   };
   const authUrl = await cca.getAuthCodeUrl(authCodeUrlParams);
 
@@ -110,8 +137,24 @@ async function login() {
       const authCode = url.searchParams.get("code");
       const error = url.searchParams.get("error");
       const errorDescription = url.searchParams.get("error_description");
+      const returnedState = url.searchParams.get("state");
 
       if (authCode) {
+        // Verify state nonce to prevent CSRF
+        if (!pendingStateNonce || returnedState !== pendingStateNonce) {
+          pendingStateNonce = null;
+          res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
+          res.end(
+            "<html><body style='font-family:sans-serif;text-align:center;margin-top:80px'>" +
+              "<h1 style='color:red'>&#10060; Error de seguridad</h1>" +
+              "<p>Estado de sesi&#243;n inv&#225;lido. Intenta de nuevo.</p>" +
+              "</body></html>",
+          );
+          server.close();
+          reject(new Error("OAuth state mismatch — possible CSRF attack"));
+          return;
+        }
+        pendingStateNonce = null;
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(
           "<html><body style='font-family:sans-serif;text-align:center;margin-top:80px'>" +

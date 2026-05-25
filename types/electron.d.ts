@@ -112,7 +112,7 @@ export interface Album {
   createdAt: string;
   updatedAt: string;
   photoCount: number;
-  previewThumbnails: string[];
+  previewThumbnails: { id: string; thumbnailPath: string }[];
 }
 
 export interface AlbumPhoto {
@@ -382,19 +382,19 @@ export interface ElectronAPI {
     albumId: string,
     photoIds: string[],
   ) => Promise<{ success: boolean; deletedCount?: number; error?: string }>;
-  getAlbumPhoto: (storedPath: string) => Promise<{
+  getAlbumPhoto: (albumId: string, photoId: string) => Promise<{
     success: boolean;
     data?: string;
     mediaType?: "photo" | "video";
     error?: string;
   }>;
-  getAlbumThumbnail: (thumbnailPath: string) => Promise<{
+  getAlbumThumbnail: (albumId: string, photoId: string) => Promise<{
     success: boolean;
     data?: string;
     error?: string;
   }>;
   // ─── Read EXIF from stored photo ─────────────────────────────────────────
-  readPhotoExif: (storedPath: string) => Promise<{
+  readPhotoExif: (albumId: string, photoId: string) => Promise<{
     success: boolean;
     exif?: {
       make: string | null;
@@ -440,7 +440,8 @@ export interface ElectronAPI {
 
   // ─── Photo Download ───────────────────────────────────────────────
   downloadPhotos: (
-    photos: Array<{ storedPath: string; originalFilename: string }>,
+    albumId: string,
+    photoIds: string[],
   ) => Promise<{
     success: boolean;
     savedPath?: string;

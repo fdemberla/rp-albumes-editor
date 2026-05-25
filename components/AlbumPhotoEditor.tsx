@@ -93,7 +93,7 @@ export default function AlbumPhotoEditor({
     setExifError(null);
     setExifOpen(true);
     try {
-      const result = await window.electronAPI.readPhotoExif(photo.storedPath);
+      const result = await window.electronAPI.readPhotoExif(photo.albumId, photo.id);
       if (result.success && result.exif) {
         setExifData(result.exif);
 

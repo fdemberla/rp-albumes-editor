@@ -115,7 +115,8 @@ export default function AlbumDetail({
       if (photo.thumbnailPath && !thumbnails[photo.id]) {
         try {
           const result = await window.electronAPI.getAlbumThumbnail(
-            photo.thumbnailPath,
+            photo.albumId,
+            photo.id,
           );
           if (result.success && result.data) {
             newThumbnails[photo.id] = result.data;
@@ -187,17 +188,10 @@ export default function AlbumDetail({
   const handleDownloadPhotos = async () => {
     if (selectedPhotos.length === 0 || !window.electronAPI) return;
 
-    const photosToDownload = currentAlbum.photos
-      .filter((p: AlbumPhoto) => selectedPhotos.includes(p.id))
-      .map((p: AlbumPhoto) => ({
-        storedPath: p.storedPath,
-        originalFilename: p.originalFilename,
-      }));
-
     setDownloading(true);
     setDownloadProgress(null);
     try {
-      const result = await window.electronAPI.downloadPhotos(photosToDownload);
+      const result = await window.electronAPI.downloadPhotos(currentAlbum.id, selectedPhotos);
       if (result.error === "cancelled") {
         setDownloading(false);
         setDownloadProgress(null);
